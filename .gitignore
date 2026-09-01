@@ -1,0 +1,17 @@
+# Build outputs
+/build/
+/dist/
+/.deps/
+/aqtinstall.log
+
+# Qt Creator and local IDE state
+CMakeLists.txt.user*
+/.qtcreator/
+/.vs/
+/.vscode/
+
+# Platform artifacts
+.DS_Store
+Thumbs.db
+*.user
+*.suo
