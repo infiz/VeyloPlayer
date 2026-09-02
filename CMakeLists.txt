@@ -49,6 +49,8 @@ qt_add_executable(VeyloPlayer
     src/TrackPreference.h
     src/VideoSurfaceWindow.cpp
     src/VideoSurfaceWindow.h
+    src/WindowPlacement.cpp
+    src/WindowPlacement.h
     src/main.cpp
 )
 
