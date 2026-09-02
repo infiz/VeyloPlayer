@@ -149,7 +149,7 @@ ApplicationWindow {
         onAccepted: Player.addExternalSubtitle(selectedFile)
     }
 
-    Shortcut { sequence: StandardKey.Open; onActivated: openDialog.open() }
+    Shortcut { sequences: [StandardKey.Open]; onActivated: openDialog.open() }
     Shortcut { sequence: "Space"; enabled: Player.isAudio || Player.isVideo; onActivated: Player.playPause() }
     Shortcut {
         sequence: "Left"

@@ -17,7 +17,10 @@ set(CMAKE_AUTORCC ON)
 
 option(VEYLO_BUILD_TESTS "Build VeyloPlayer tests" ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Quick QuickControls2 Svg)
+# Qt's Gui package probes for optional Vulkan headers even on macOS, where
+# VeyloPlayer uses Qt's native Metal/OpenGL rendering paths. Keep Qt required
+# while silencing status output for optional packages that are not used.
+find_package(Qt6 6.8 QUIET REQUIRED COMPONENTS Core Gui Quick QuickControls2 Svg)
 find_package(LibVLC 3 REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -100,8 +103,14 @@ set_target_properties(VeyloPlayer PROPERTIES
 )
 
 if(APPLE)
+    set(macos_app_icon "${CMAKE_CURRENT_SOURCE_DIR}/assets/branding/veylo-player.icns")
+    set_source_files_properties("${macos_app_icon}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources"
+    )
+    target_sources(VeyloPlayer PRIVATE "${macos_app_icon}")
     set_target_properties(VeyloPlayer PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Info.plist.in"
+        MACOSX_BUNDLE_ICON_FILE "veylo-player.icns"
     )
 endif()
 
@@ -150,7 +159,7 @@ install(SCRIPT ${qt_deploy_script})
 
 if(VEYLO_BUILD_TESTS)
     enable_testing()
-    find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_package(Qt6 QUIET REQUIRED COMPONENTS Test)
     add_subdirectory(tests)
 endif()
 

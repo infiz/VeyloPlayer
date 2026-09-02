@@ -89,15 +89,38 @@ Windows requires the user to confirm VeyloPlayer as the default through **Settin
 
 ## Build on macOS
 
-The initial macOS build entry point is `scripts/build-macos.sh`. It expects pinned Qt and LibVLC locations through `QT_ROOT` and `LIBVLC_ROOT`. Set `PACKAGE=1` to create the DMG. The app bundle declares its supported audio, video, and JPEG document types and handles Finder open events. Signing, notarization, and final DMG validation remain part of the macOS release milestone.
+Prerequisites:
+
+- macOS 12 or newer with Xcode command-line tools.
+- CMake, Ninja, Qt 6.8 or newer, and VLC 3. Homebrew users can install them with:
+
+```bash
+brew install cmake ninja qt
+brew install --cask vlc
+```
+
+Build the Release application, run its tests, deploy private Qt and LibVLC
+runtimes, sign the bundle ad hoc, and create a verified DMG:
+
+```bash
+./scripts/build_mac.sh
+```
+
+The app is written to `build/macos/VeyloPlayer.app`, and the installer is
+written to `dist/`. The script automatically detects Homebrew Qt and VLC in
+`/Applications`. Set `QT_ROOT` or `LIBVLC_ROOT` to use another installation.
+Set `CONFIGURATION=Debug PACKAGE=0` for a development build without a DMG, or
+set `CODESIGN_IDENTITY` to sign with a Developer ID identity. Public releases
+still require Apple notarization.
 
 ## Verification status
 
 The Windows MVP has been built and exercised end to end with JPEG navigation,
 video rendering, embedded track selection, external subtitles, automatic
 same-folder continuation, and recursive folder discovery. Core natural-sort and folder-sequence tests run during
-every build. macOS remains source-compatible but requires validation on macOS
-hardware before a public release.
+every build. The self-contained Apple silicon macOS app and DMG build have been
+validated on macOS hardware; signing with a distribution identity, notarization,
+and broader compatibility testing remain release requirements.
 
 ## License
 
