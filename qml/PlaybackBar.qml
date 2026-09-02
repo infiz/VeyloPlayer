@@ -7,6 +7,7 @@ Item {
     id: bar
 
     property bool fullScreen: false
+    readonly property bool compact: width < 820
     signal filesRequested()
     signal folderRequested()
     signal subtitleRequested()
@@ -33,7 +34,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             visible: Player.isAudio || Player.isVideo
-            spacing: 10
+            spacing: bar.compact ? 6 : 10
 
             Text {
                 text: bar.formatTime(seekSlider.pressed ? seekSlider.value : Player.position)
@@ -43,6 +44,7 @@ Item {
             TimelineSlider {
                 id: seekSlider
                 Layout.fillWidth: true
+                Layout.minimumWidth: 80
                 from: 0
                 to: Math.max(1, Player.duration)
                 chapterPositions: Player.isVideo ? Player.chapterPositions : []
@@ -59,7 +61,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: bar.compact ? 4 : 8
 
             AddMediaButton {
                 onFilesRequested: bar.filesRequested()
@@ -94,7 +96,8 @@ Item {
             }
             Slider {
                 visible: Player.isAudio || Player.isVideo
-                Layout.preferredWidth: 110
+                Layout.minimumWidth: 64
+                Layout.preferredWidth: bar.compact ? 76 : 110
                 from: 0
                 to: 100
                 value: Player.volume
@@ -105,6 +108,8 @@ Item {
             Item { Layout.fillWidth: true }
 
             ComboBox {
+                Layout.minimumWidth: bar.compact ? 92 : 110
+                Layout.preferredWidth: bar.compact ? 104 : 150
                 Layout.maximumWidth: 190
                 visible: Player.audioTracks.length > 1
                 model: Player.audioTracks
@@ -119,6 +124,8 @@ Item {
                 Component.onCompleted: Player.refreshTracks()
             }
             ComboBox {
+                Layout.minimumWidth: bar.compact ? 92 : 110
+                Layout.preferredWidth: bar.compact ? 104 : 150
                 Layout.maximumWidth: 190
                 visible: Player.isVideo
                 model: Player.subtitleTracks
@@ -131,9 +138,10 @@ Item {
                 Accessible.name: "Subtitle track"
                 onActivated: Player.selectSubtitleTrack(currentValue)
             }
-            Button {
+            IconButton {
                 visible: Player.isVideo
-                text: "Load subtitles"
+                symbol: "subtitleFile"
+                accessibleName: "Load subtitle file"
                 onClicked: bar.subtitleRequested()
             }
             IconButton {

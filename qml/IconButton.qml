@@ -181,6 +181,36 @@ Button {
                 PathLine { x: 14; y: 20 }
             }
         }
+
+        Shape {
+            anchors.centerIn: parent
+            width: 22
+            height: 22
+            visible: control.symbol === "subtitleFile"
+            antialiasing: true
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: control.glyphColor
+                strokeWidth: 1.9
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                startX: 4; startY: 2
+                PathLine { x: 14; y: 2 }
+                PathLine { x: 19; y: 7 }
+                PathLine { x: 19; y: 20 }
+                PathLine { x: 4; y: 20 }
+                PathLine { x: 4; y: 2 }
+                PathMove { x: 14; y: 2 }
+                PathLine { x: 14; y: 7 }
+                PathLine { x: 19; y: 7 }
+                PathMove { x: 7; y: 13 }
+                PathLine { x: 10; y: 13 }
+                PathMove { x: 13; y: 13 }
+                PathLine { x: 16; y: 13 }
+                PathMove { x: 7; y: 17 }
+                PathLine { x: 16; y: 17 }
+            }
+        }
     }
 
     background: Rectangle {

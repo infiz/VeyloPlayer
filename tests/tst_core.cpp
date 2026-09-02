@@ -5,6 +5,7 @@
 #include "NaturalSort.h"
 #include "PlaybackResume.h"
 #include "TrackPreference.h"
+#include "WindowPlacement.h"
 
 #include <QDir>
 #include <QFile>
@@ -29,6 +30,7 @@ private slots:
     void folderTrackPreferenceIdsAreFolderScoped();
     void chapterNavigationStopsAtMediaBoundaries();
     void timelineChapterPositionsAreVisibleAndOrdered();
+    void windowPlacementStaysVisibleOnAvailableScreens();
 };
 
 void CoreTests::naturalNumbersSortNumerically()
@@ -208,6 +210,25 @@ void CoreTests::timelineChapterPositionsAreVisibleAndOrdered()
              QList<qint64>({10'000, 30'000}));
     QCOMPARE(veylo::timelineChapterPositions({5'000, 10'000}, 0),
              QList<qint64>({5'000, 10'000}));
+}
+
+void CoreTests::windowPlacementStaysVisibleOnAvailableScreens()
+{
+    const QList<QRect> screens = {
+        QRect(0, 0, 1920, 1040),
+        QRect(1920, 0, 2560, 1400),
+    };
+
+    QCOMPARE(veylo::visibleWindowGeometry(QRect(2200, 120, 1120, 720), screens,
+                                          QSize(720, 480)),
+             QRect(2200, 120, 1120, 720));
+    QCOMPARE(veylo::visibleWindowGeometry(QRect(5000, 200, 1120, 720), screens,
+                                          QSize(720, 480)),
+             QRect(400, 160, 1120, 720));
+    QCOMPARE(veylo::visibleWindowGeometry(QRect(-100, -100, 4000, 2000),
+                                          {screens.constFirst()},
+                                          QSize(720, 480)),
+             QRect(0, 0, 1920, 1040));
 }
 
 QTEST_MAIN(CoreTests)

@@ -11,9 +11,10 @@ ApplicationWindow {
     height: 720
     minimumWidth: 720
     minimumHeight: 480
-    visible: true
+    visible: false
     color: Theme.window
     readonly property string applicationTitle: "VeyloPlayer " + Qt.application.version
+    readonly property bool compactControls: width < 820
     title: Player.title.length > 0 ? Player.title + " — " + applicationTitle : applicationTitle
 
     property bool controlsVisible: true
@@ -504,12 +505,13 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     visible: Player.isAudio || Player.isVideo
-                    spacing: 10
+                    spacing: root.compactControls ? 6 : 10
 
                     Text { text: root.formatTime(seekSlider.pressed ? seekSlider.value : Player.position); color: Theme.secondaryText; font.pixelSize: 12 }
                     TimelineSlider {
                         id: seekSlider
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 80
                         from: 0
                         to: Math.max(1, Player.duration)
                         chapterPositions: Player.isVideo ? Player.chapterPositions : []
@@ -522,7 +524,7 @@ ApplicationWindow {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: root.compactControls ? 4 : 8
 
                     AddMediaButton {
                         onFilesRequested: openDialog.open()
@@ -557,7 +559,8 @@ ApplicationWindow {
                     }
                     Slider {
                         visible: Player.isAudio || Player.isVideo
-                        Layout.preferredWidth: 110
+                        Layout.minimumWidth: 64
+                        Layout.preferredWidth: root.compactControls ? 76 : 110
                         from: 0
                         to: 100
                         value: Player.volume
@@ -569,6 +572,8 @@ ApplicationWindow {
 
                     ComboBox {
                         id: audioTracks
+                        Layout.minimumWidth: root.compactControls ? 92 : 110
+                        Layout.preferredWidth: root.compactControls ? 104 : 150
                         Layout.maximumWidth: 190
                         visible: Player.audioTracks.length > 1
                         model: Player.audioTracks
@@ -584,6 +589,8 @@ ApplicationWindow {
                     }
                     ComboBox {
                         id: subtitleTracks
+                        Layout.minimumWidth: root.compactControls ? 92 : 110
+                        Layout.preferredWidth: root.compactControls ? 104 : 150
                         Layout.maximumWidth: 190
                         visible: Player.isVideo
                         model: Player.subtitleTracks
@@ -596,9 +603,10 @@ ApplicationWindow {
                         Accessible.name: "Subtitle track"
                         onActivated: Player.selectSubtitleTrack(currentValue)
                     }
-                    Button {
+                    IconButton {
                         visible: Player.isVideo
-                        text: "Load subtitles"
+                        symbol: "subtitleFile"
+                        accessibleName: "Load subtitle file"
                         onClicked: subtitleDialog.open()
                     }
                     IconButton {

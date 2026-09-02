@@ -215,6 +215,8 @@ Actual codec availability may depend on the bundled playback engine and platform
 18. **Video keyboard seeking:** During seekable video playback, Left Arrow moves playback backward five seconds and Right Arrow moves it forward five seconds, clamping at the start and end and behaving the same way in fullscreen.
 19. **Folder track preferences:** After selecting the second audio track and an embedded subtitle in one video, opening another video from the same folder selects tracks with matching labels, or the same ordinal positions when labels differ. Choosing subtitles Off is also restored, while an external subtitle is not carried to another file.
 20. **Chapter-aware transport:** Given a video with three embedded chapters followed by another media file, the timeline shows light-grey dividers at the second and third chapter starts. Repeated presses of Next visit those chapters before opening the next file; Previous follows the same priority in reverse.
+21. **Compact playback bar:** At the minimum supported window width with audio and subtitle selectors visible, the complete seek timeline and every playback action remain visible and usable. Loading an external subtitle uses a compact icon with an accessible name and tooltip.
+22. **Remembered window placement:** After moving and resizing the main window, closing and reopening VeyloPlayer restores its last normal position and size. Maximized or fullscreen state is also restored, and a saved position from a disconnected display is moved fully onto an available display.
 
 ## 10. Out of scope for the MVP
 

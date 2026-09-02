@@ -87,6 +87,22 @@ Register a development build as an available Windows file handler:
 
 Windows requires the user to confirm VeyloPlayer as the default through **Settings > Apps > Default apps**.
 
+## Code quality
+
+Install [pre-commit](https://pre-commit.com/) and enable the Git hook once per
+checkout:
+
+```powershell
+pre-commit install
+```
+
+The hook checks changed files automatically before each commit. Run every check
+against all tracked files with:
+
+```powershell
+pre-commit run --all-files
+```
+
 ## Build on macOS
 
 Prerequisites:

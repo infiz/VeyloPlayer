@@ -6,6 +6,7 @@ qt_add_executable(VeyloCoreTests
     ../src/NaturalSort.cpp
     ../src/PlaybackResume.cpp
     ../src/TrackPreference.cpp
+    ../src/WindowPlacement.cpp
 )
 
 target_include_directories(VeyloCoreTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
