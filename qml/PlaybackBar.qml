@@ -109,8 +109,8 @@ Item {
 
             ComboBox {
                 Layout.minimumWidth: bar.compact ? 92 : 110
-                Layout.preferredWidth: bar.compact ? 104 : 150
-                Layout.maximumWidth: 190
+                Layout.preferredWidth: bar.compact ? 120 : 190
+                Layout.maximumWidth: 260
                 visible: Player.audioTracks.length > 1
                 model: Player.audioTracks
                 textRole: "label"
@@ -119,14 +119,16 @@ Item {
                     Player.audioTracks.length
                     return indexOfValue(Player.activeAudioTrack)
                 }
-                Accessible.name: "Audio track"
+                Accessible.name: "Audio track: " + currentText
+                ToolTip.visible: hovered && currentText.length > 0
+                ToolTip.text: currentText
                 onActivated: Player.selectAudioTrack(currentValue)
                 Component.onCompleted: Player.refreshTracks()
             }
             ComboBox {
                 Layout.minimumWidth: bar.compact ? 92 : 110
-                Layout.preferredWidth: bar.compact ? 104 : 150
-                Layout.maximumWidth: 190
+                Layout.preferredWidth: bar.compact ? 120 : 190
+                Layout.maximumWidth: 260
                 visible: Player.isVideo
                 model: Player.subtitleTracks
                 textRole: "label"
@@ -135,7 +137,9 @@ Item {
                     Player.subtitleTracks.length
                     return indexOfValue(Player.activeSubtitleTrack)
                 }
-                Accessible.name: "Subtitle track"
+                Accessible.name: "Subtitle track: " + currentText
+                ToolTip.visible: hovered && currentText.length > 0
+                ToolTip.text: currentText
                 onActivated: Player.selectSubtitleTrack(currentValue)
             }
             IconButton {

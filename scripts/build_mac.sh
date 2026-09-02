@@ -97,6 +97,12 @@ fi
 [[ -f "${libvlc_root}/lib/libvlccore.dylib" ]] || fail "libvlccore.dylib was not found below LIBVLC_ROOT ('${libvlc_root}')."
 [[ -d "${libvlc_root}/plugins" ]] || fail "VLC plug-ins were not found below LIBVLC_ROOT ('${libvlc_root}')."
 
+vlc_version="unknown"
+if [[ -f "${libvlc_root}/../Info.plist" ]]; then
+    vlc_version="$(plutil -extract CFBundleShortVersionString raw \
+        "${libvlc_root}/../Info.plist" 2>/dev/null || printf 'unknown')"
+fi
+
 host_architecture="$(uname -m)"
 if ! lipo -archs "${libvlc_root}/lib/libvlc.dylib" | tr ' ' '\n' | grep -Fxq "${host_architecture}"; then
     fail "The VLC runtime does not contain the host architecture '${host_architecture}'."
@@ -123,6 +129,7 @@ cmake -S "${repository_root}" -B "${build_directory}" -G Ninja \
     -DLIBVLC_INCLUDE_DIR="${vlc_sdk_root}/include" \
     -DLIBVLC_LIBRARY="${vlc_sdk_root}/lib/libvlc.dylib" \
     -DLIBVLC_RUNTIME_DIR="${vlc_sdk_root}/lib" \
+    -DVEYLO_VLC_VERSION="${vlc_version}" \
     -DVEYLO_BUILD_TESTS=ON
 
 cmake --build "${build_directory}" --parallel
@@ -207,6 +214,30 @@ if ! otool -l "${executable}" | grep -Fq '@executable_path/lib'; then
     install_name_tool -add_rpath '@executable_path/lib' "${executable}"
 fi
 
+# Preserve the license texts, dependency notices, exact source offer, and Qt
+# SBOM inside the signed bundle. These files must be present before codesign.
+license_destination="${application}/Contents/Resources/licenses"
+mkdir -p "${license_destination}"
+cp -Lp "${repository_root}/LICENSE" \
+    "${repository_root}/INSTALLER_LICENSE.txt" \
+    "${repository_root}/SOURCE_CODE.md" \
+    "${repository_root}/THIRD_PARTY_NOTICES.md" \
+    "${build_directory}/SOURCE_OFFER.txt" \
+    "${license_destination}/"
+cp -RLp "${repository_root}/LICENSES" "${license_destination}/"
+
+qt_sbom_root="${qt_root}/sbom"
+if [[ ! -d "${qt_sbom_root}" && -d "${qt_root}/share/qt/sbom" ]]; then
+    qt_sbom_root="${qt_root}/share/qt/sbom"
+fi
+if [[ -d "${qt_sbom_root}" ]]; then
+    mkdir -p "${license_destination}/qt-sbom"
+    find "${qt_sbom_root}" -maxdepth 1 -type f \
+        \( -name 'qtbase-*.spdx' -o -name 'qtdeclarative-*.spdx' \
+           -o -name 'qtsvg-*.spdx' -o -name 'qtshadertools-*.spdx' \) \
+        -exec cp -Lp {} "${license_destination}/qt-sbom/" \;
+fi
+
 # macdeployqt and install_name_tool rewrite Mach-O files. Sign each nested
 # binary before sealing the outer bundle so ad-hoc builds launch on macOS.
 codesign_identity="${CODESIGN_IDENTITY:--}"
@@ -233,6 +264,11 @@ if [[ "${package}" == "1" ]]; then
     mkdir -p "${staging_directory}/.background" \
         "${mount_directory}" "${distribution_directory}"
     /usr/bin/ditto "${application}" "${staging_directory}/VeyloPlayer.app"
+    cp -Lp "${repository_root}/LICENSE" "${staging_directory}/LICENSE.txt"
+    cp -Lp "${repository_root}/THIRD_PARTY_NOTICES.md" \
+        "${staging_directory}/THIRD_PARTY_NOTICES.txt"
+    cp -Lp "${build_directory}/SOURCE_OFFER.txt" \
+        "${staging_directory}/SOURCE_OFFER.txt"
     codesign --verify --deep --strict "${staging_directory}/VeyloPlayer.app"
     ln -s /Applications "${staging_directory}/Applications"
     sips -s format png "${repository_root}/assets/branding/dmg-background.svg" \

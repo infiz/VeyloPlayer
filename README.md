@@ -2,6 +2,9 @@
 
 VeyloPlayer is a modern, open-source desktop player for local video, audio, and JPEG files. The first end-to-end implementation targets Windows while keeping the C++/Qt/LibVLC application core compatible with macOS.
 
+VeyloPlayer's original source code is licensed under
+[GPL-3.0-or-later](LICENSE). Contributions are welcome under the same license.
+
 ## Current MVP
 
 - Audio and video playback through a private LibVLC runtime.
@@ -15,6 +18,7 @@ VeyloPlayer is a modern, open-source desktop player for local video, audio, and 
   surface toggles play/pause.
 - Local continue-watching history remembers the last video and resume position.
 - Embedded audio and subtitle track selection.
+- A remembered audio-output device selector in Settings.
 - Per-folder audio and embedded-subtitle preferences with label and position matching.
 - External SRT, WebVTT, ASS, and SSA subtitle loading.
 - Natural same-folder continuation (`1`, `2`, `10`, `11`).
@@ -27,6 +31,10 @@ VeyloPlayer is a modern, open-source desktop player for local video, audio, and 
   support Left/Right Arrow navigation through nested photos.
 - Branded VeyloPlayer icon in the Windows executable, taskbar, Start menu, and installer.
 - A modern interface that automatically follows the system light or dark appearance.
+- File, Playback, and Help menus, including an in-app About dialog with the
+  complete project license, third-party notices, version, and source link.
+- A **Set as default player** menu action that opens VeyloPlayer's Windows
+  Default Apps page or requests the corresponding macOS media associations.
 - Fast startup: the window is shown before LibVLC is initialized, and packaged
   VLC plugins include a generated lookup cache.
 
@@ -77,6 +85,10 @@ checksum-verified WiX Toolset 4 into `.deps/`, so a machine-wide WiX installatio
 is not required. Packaging fails if either the ZIP or MSI cannot be created. The
 installer adds VeyloPlayer to the Start menu and Windows search. Its completion
 screen also includes a checked **Launch VeyloPlayer** option.
+
+The MSI presents the open-source license notice before installation. Both the
+MSI and portable ZIP include the complete project and dependency license texts,
+VLC notices, Qt SBOM files, and a source offer under `licenses/`.
 
 Register a development build as an available Windows file handler:
 
@@ -129,6 +141,22 @@ Set `CONFIGURATION=Debug PACKAGE=0` for a development build without a DMG, or
 set `CODESIGN_IDENTITY` to sign with a Developer ID identity. Public releases
 still require Apple notarization.
 
+The app bundle contains legal notices under `Contents/Resources/licenses`; the
+DMG also exposes the project license, third-party notices, and source offer at
+its top level.
+
+## Open-source distribution
+
+- [Project license](LICENSE)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Corresponding source information](SOURCE_CODE.md)
+- [Contribution and DCO policy](CONTRIBUTING.md)
+- [Binary-release compliance checklist](docs/distribution-compliance.md)
+
+Do not publish a binary until the final package inventory, license/SBOM, source
+availability, and codec/patent checks in the compliance checklist pass. A build
+success alone is not a distribution approval.
+
 ## Verification status
 
 The Windows MVP has been built and exercised end to end with JPEG navigation,
@@ -140,4 +168,9 @@ and broader compatibility testing remain release requirements.
 
 ## License
 
-VeyloPlayer will be open source. The exact project license is still being selected; GPL-3.0-or-later is the current recommendation. Dependency licenses and codec distribution obligations must be audited before publishing binaries.
+Copyright (C) 2026 VeyloPlayer contributors. VeyloPlayer is free software under
+GPL-3.0-or-later and is provided without warranty. Qt, VLC/LibVLC, FFmpeg, and
+other bundled components remain under their respective licenses; see the
+third-party notices and installed `licenses/` directory. Open-source copyright
+licenses do not by themselves grant every codec patent, trademark, decryption,
+or media-content right.

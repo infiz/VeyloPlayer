@@ -1,0 +1,33 @@
+VEYLOPLAYER OPEN-SOURCE LICENSE NOTICE
+
+Copyright (C) 2026 VeyloPlayer contributors.
+
+VeyloPlayer's original source code is free software licensed under the GNU
+General Public License, version 3, or (at your option) any later version
+(GPL-3.0-or-later). You may run, study, share, and modify it under that license.
+The software is provided without warranty to the extent permitted by law.
+
+This distribution includes dynamically linked Qt libraries and a private VLC /
+LibVLC runtime with multimedia plugins and transitive libraries. Those works
+remain under their own licenses. Continuing installation acknowledges receipt
+of these notices; it does not create a proprietary EULA, transfer copyright,
+waive statutory rights, or add restrictions to any GPL, LGPL, or other license.
+
+The installer and installed application's licenses directory contain:
+
+- the complete GPL-3.0, GPL-2.0, LGPL-3.0, and LGPL-2.1 license texts;
+- THIRD_PARTY_NOTICES.md, with authorship, trademarks, and dependency details;
+- SOURCE_OFFER.txt, identifying the corresponding source for this build;
+- Qt SPDX software bills of materials and VLC notices when supplied upstream.
+
+Users may replace the shared Qt and LibVLC libraries with compatible modified
+versions. Reverse engineering for debugging those modifications is permitted.
+No technical or contractual measure in VeyloPlayer is intended to prevent it.
+
+Open-source licenses do not necessarily grant patent, codec, trademark,
+decryption, or media-content rights. Use and redistribution remain subject to
+applicable law.
+
+Project source: https://github.com/infiz/VeyloPlayer
+Third-party details: THIRD_PARTY_NOTICES.md
+Release compliance instructions: docs/distribution-compliance.md

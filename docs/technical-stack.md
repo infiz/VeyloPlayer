@@ -211,6 +211,7 @@ The bootstrap scripts install or locate build dependencies. The build scripts co
 - Installer: CPack WiX generator targeting WiX Toolset 4.
 - Signing: Windows SDK `signtool` for executable, DLL, and MSI signing.
 - File associations: WiX registration of application capabilities and ProgIDs; Windows retains user consent and control of defaults.
+- In-app default-player action: open `ms-settings:defaultapps` with VeyloPlayer's per-machine or per-user registered-app name. Windows Settings remains the only authority that applies the user's choice.
 - Single-instance file activation: `QLocalServer`/`QLocalSocket` with authenticated same-user message handling and correctly encoded absolute paths.
 
 ### 9.3 macOS
@@ -220,6 +221,7 @@ The bootstrap scripts install or locate build dependencies. The build scripts co
 - Qt deployment: `macdeployqt` or Qt's CMake deployment API.
 - LibVLC deployment: copy its dynamic libraries and plugin directory into the app bundle, fix bundle-relative load paths, and verify with `otool`.
 - File associations: declare document types and UTTypes in `Info.plist`; handle Finder opens through Qt file-open events.
+- In-app default-player action: use `NSWorkspace.setDefaultApplication` for each supported `UTType`; macOS presents system consent when required and reports asynchronous failures to the app.
 - Signing/notarization: `codesign` with hardened runtime, `notarytool`, and `stapler`.
 - DMG: CPack DragNDrop after the complete app bundle has been assembled and signed.
 
@@ -227,12 +229,18 @@ macOS packaging order is strict: assemble the complete bundle, rewrite/verify lo
 
 ## 10. Licensing and distribution constraints
 
-VeyloPlayer will be developed and distributed as open-source software. GPL-3.0-or-later is the recommended license for VeyloPlayer's original source code because it is compatible with the selected open-source dependency strategy and ensures that distributed modifications to the application remain open. The final license choice must be confirmed before adding the repository's `LICENSE` file and release artifacts.
+VeyloPlayer's original source code is distributed under GPL-3.0-or-later. The
+complete text is in the repository `LICENSE`, contributions use the same
+license, and Developer Certificate of Origin 1.1 sign-off is required.
 
-The dependency plan uses Qt under LGPL 3 and LibVLC under LGPL 2.1 or later. This is a technical distribution plan, not legal advice.
+The dependency plan uses dynamically linked Qt under LGPL 3/GPL 3 and LibVLC
+under LGPL 2.1 or later. The deployed VLC plugin set includes components under
+additional licenses and is conservatively handled as a GPL-covered runtime
+until the final binary audit resolves every file. This is a technical
+distribution plan, not legal advice.
 
 - Dynamically link Qt and LibVLC.
-- Include the applicable license texts, copyright notices, third-party notices, and relinking/replacement information required by their licenses.
+- Include the applicable license texts, copyright notices, third-party notices, generated source offer, Qt SBOM, VLC notices, and relinking/replacement information required by their licenses in every MSI, ZIP, app bundle, and DMG.
 - Make the exact corresponding library source, modifications, and build information available as required by the selected licenses.
 - Do not use GPL-only Qt modules or LibVLC plugins in a proprietary release without an explicit license decision.
 - Do not use the VLC name or cone logo as VeyloPlayer branding.
@@ -240,6 +248,7 @@ The dependency plan uses Qt under LGPL 3 and LibVLC under LGPL 2.1 or later. Thi
 - Run an automated license/SBOM audit on the actual packaged binaries and plugins, not only the declared top-level dependencies.
 - Keep VeyloPlayer source, build scripts, dependency manifests, and release instructions publicly available from the canonical source repository.
 - Add contributor guidance and require contributors to certify that they have the right to submit their changes; use the Developer Certificate of Origin unless the project later adopts a contributor license agreement.
+- Apply the mandatory release gate in [Distribution Compliance](distribution-compliance.md). A successful compiler, signature, or installer test does not establish license compliance.
 
 ## 11. Testing stack
 
