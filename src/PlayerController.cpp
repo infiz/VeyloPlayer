@@ -7,8 +7,9 @@
 #include "TrackPreference.h"
 #include "VideoSurfaceWindow.h"
 
-#include <QFileInfo>
+#include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QImageReader>
 #include <QMetaObject>
 #include <QSettings>
@@ -162,6 +163,14 @@ bool PlayerController::ensureMediaEngine()
     if (vlcInstance_ && mediaPlayer_) {
         return true;
     }
+
+#if defined(Q_OS_MACOS)
+    const QString bundledPluginPath = QDir(QCoreApplication::applicationDirPath())
+                                          .filePath(QStringLiteral("plugins"));
+    if (QDir(bundledPluginPath).exists()) {
+        qputenv("VLC_PLUGIN_PATH", bundledPluginPath.toUtf8());
+    }
+#endif
 
     const char *arguments[] = {"--no-video-title-show", "--quiet"};
     vlcInstance_ = libvlc_new(static_cast<int>(std::size(arguments)), arguments);
