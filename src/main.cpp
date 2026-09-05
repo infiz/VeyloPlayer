@@ -1,9 +1,12 @@
 #include "Application.h"
 #include "CurrentImageProvider.h"
+#include "LegalInfo.h"
 #include "PlayerController.h"
+#include "SystemIntegration.h"
 #include "WindowPlacement.h"
 
 #include <QCommandLineParser>
+#include <QCommandLineOption>
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QIcon>
@@ -38,11 +41,20 @@ int main(int argc, char *argv[])
     parser.setApplicationDescription(QStringLiteral("A modern open-source media player"));
     parser.addHelpOption();
     parser.addVersionOption();
+    QCommandLineOption startupSmokeTestOption(QStringLiteral("startup-smoke-test"));
+    startupSmokeTestOption.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(startupSmokeTestOption);
     parser.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Local media file to open."));
     parser.process(application);
+    const bool startupSmokeTest = parser.isSet(startupSmokeTestOption);
 
     PlayerController player;
+    LegalInfo legalInfo;
+    SystemIntegration systemIntegration;
     qmlRegisterSingletonInstance("Veylo.Core", 1, 0, "Player", &player);
+    qmlRegisterSingletonInstance("Veylo.Core", 1, 0, "Legal", &legalInfo);
+    qmlRegisterSingletonInstance(
+        "Veylo.Core", 1, 0, "SystemIntegration", &systemIntegration);
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("current"), new CurrentImageProvider(&player));
@@ -55,6 +67,9 @@ int main(int argc, char *argv[])
     for (QObject *rootObject : engine.rootObjects()) {
         if (auto *window = qobject_cast<QWindow *>(rootObject)) {
             window->setIcon(applicationIcon);
+            if (startupSmokeTest) {
+                continue;
+            }
 
             QSettings settings;
             const QRect savedGeometry = settings.value(
@@ -144,6 +159,9 @@ int main(int argc, char *argv[])
     if (!startupFile.isEmpty()) {
         const QString startupPath = QFileInfo(startupFile).absoluteFilePath();
         QTimer::singleShot(0, &player, [&player, startupPath] { player.openFile(startupPath); });
+    }
+    if (startupSmokeTest) {
+        QTimer::singleShot(250, &application, &QCoreApplication::quit);
     }
     return application.exec();
 }

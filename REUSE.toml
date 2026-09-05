@@ -1,0 +1,26 @@
+version = 1
+SPDX-PackageName = "VeyloPlayer"
+SPDX-PackageSupplier = "VeyloPlayer contributors"
+SPDX-PackageDownloadLocation = "https://github.com/infiz/VeyloPlayer"
+
+[[annotations]]
+path = [
+  ".pre-commit-config.yaml",
+  ".gitignore",
+  "CMakeLists.txt",
+  "README.md",
+  "CONTRIBUTING.md",
+  "INSTALLER_LICENSE.txt",
+  "SOURCE_CODE.md",
+  "THIRD_PARTY_NOTICES.md",
+  "assets/**",
+  "cmake/**",
+  "docs/**",
+  "qml/**",
+  "scripts/**",
+  "src/**",
+  "tests/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 VeyloPlayer contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"

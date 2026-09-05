@@ -152,6 +152,9 @@ Actual codec availability may depend on the bundled playback engine and platform
 - **UX-020:** A first-time user can open a file, play or pause it, adjust volume, enter fullscreen, choose tracks, and leave fullscreen without reading documentation.
 - **UX-021:** VeyloPlayer uses a distinctive, high-resolution application icon in the Windows taskbar, Start menu, installer, and application switcher. The same brand mark is available to the macOS bundle and Dock packaging flow.
 - **UX-022:** Play, pause, enter-fullscreen, and exit-fullscreen actions use crisp vector controls that remain visually distinct at normal and high-DPI sizes; tooltips and accessible names describe every action.
+- **UX-023:** The application menu provides File, Playback, and Help actions with platform-appropriate keyboard shortcuts. Help > About VeyloPlayer displays the version, copyright, warranty notice, project license, third-party notices, and source link without requiring network access for the legal text.
+- **UX-024:** File > Set as default player provides a direct, platform-native route to make VeyloPlayer the default for supported media types. Windows opens VeyloPlayer's registered Default Apps settings and preserves required user confirmation; macOS requests the associations through the system API and displays any consent UI required by the OS.
+- **UX-025:** Settings provides a human-readable list of available audio output devices. Selecting a device applies it to playback and remembers it for future launches; the list can be refreshed after devices are connected or removed.
 
 ## 7. Installation and build requirements
 
@@ -173,6 +176,8 @@ Actual codec availability may depend on the bundled playback engine and platform
 - **INS-003:** The installer supports per-user installation without requiring administrator access where the selected framework permits it.
 - **INS-004:** Upgrading preserves user preferences.
 - **INS-005:** Uninstalling removes installed application files and registrations but preserves user media.
+- **INS-006:** The installer displays VeyloPlayer's open-source license notice and does not impose terms that restrict rights granted by GPL, LGPL, or a bundled component's license.
+- **INS-007:** The installed application and portable ZIP contain the complete project license, applicable GNU license texts, third-party copyright notices, Qt SBOM, VLC upstream notices, and an exact source offer.
 
 ### 7.3 macOS DMG
 
@@ -180,6 +185,7 @@ Actual codec availability may depend on the bundled playback engine and platform
 - **INS-011:** The app bundle uses a stable bundle identifier and version metadata.
 - **INS-012:** Release builds pass code-signature verification and Apple notarization checks before the DMG is published.
 - **INS-013:** Updating or replacing the application preserves user preferences.
+- **INS-014:** The app bundle contains the same license and source payload as the Windows distribution. The DMG exposes the project license, third-party notices, and source offer without requiring the app to be launched.
 
 ## 8. Non-functional requirements
 
@@ -192,6 +198,8 @@ Actual codec availability may depend on the bundled playback engine and platform
 - **NFR-007:** Accessibility labels, keyboard focus, readable contrast, and platform screen-reader support are required for primary controls.
 - **NFR-008:** The application must handle sleep/wake, display changes, audio-device changes, and removal of the current file without crashing.
 - **NFR-009:** The application must not require network access for local playback.
+- **NFR-010:** Release packaging preserves the user's ability to replace dynamically linked Qt and LibVLC components and does not prohibit reverse engineering for debugging those modifications.
+- **NFR-011:** No binary release is published while any packaged file has an unknown license, missing attribution, unavailable corresponding source, or unresolved distribution restriction.
 
 ## 9. Acceptance scenarios
 
@@ -217,6 +225,9 @@ Actual codec availability may depend on the bundled playback engine and platform
 20. **Chapter-aware transport:** Given a video with three embedded chapters followed by another media file, the timeline shows light-grey dividers at the second and third chapter starts. Repeated presses of Next visit those chapters before opening the next file; Previous follows the same priority in reverse.
 21. **Compact playback bar:** At the minimum supported window width with audio and subtitle selectors visible, the complete seek timeline and every playback action remain visible and usable. Loading an external subtitle uses a compact icon with an accessible name and tooltip.
 22. **Remembered window placement:** After moving and resizing the main window, closing and reopening VeyloPlayer restores its last normal position and size. Maximized or fullscreen state is also restored, and a saved position from a disconnected display is moved fully onto an available display.
+23. **Open-source notices:** Installing the MSI shows the open-source notice, and inspecting either installed platform package reveals GPL/LGPL texts, third-party notices, an exact source offer, Qt SBOM information, and VLC's supplied notices.
+24. **In-app legal notice:** Help > About VeyloPlayer opens an accessible dialog containing the complete GPL-3.0 license and bundled third-party notices, with selectable text and a source-code link.
+25. **Default-player action:** Choosing File > Set as default player opens VeyloPlayer's Default Apps page on Windows or requests the supported media associations on macOS. The operating system retains control of consent, and the app reports whether the request could be started or completed.
 
 ## 10. Out of scope for the MVP
 
@@ -238,6 +249,5 @@ The following product and distribution decisions remain:
 - Intel macOS support versus Apple-silicon-only support.
 - Whether an additional portable Windows build is desired.
 - Product identity: application icon, bundle identifier, publisher name, and signing identities.
-- Exact open-source license for VeyloPlayer's original source code; GPL-3.0-or-later is the current recommendation.
 - Whether image formats beyond JPEG, playlist features, repeat behavior, or playback-speed controls belong in the first release.
 - Minimum supported external subtitle encodings and styling behavior.

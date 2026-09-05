@@ -7,7 +7,7 @@
 VideoSurfaceWindow::VideoSurfaceWindow(QWindow *parent)
     : QWindow(parent)
 {
-    setFlags(Qt::FramelessWindowHint);
+    setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
     setTitle(QStringLiteral("VeyloPlayer video surface"));
     setIcon(QGuiApplication::windowIcon());
     singleClickTimer_.setSingleShot(true);

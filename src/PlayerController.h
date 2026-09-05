@@ -44,6 +44,10 @@ class PlayerController final : public QObject
     Q_PROPERTY(QVariantList subtitleTracks READ subtitleTracks NOTIFY tracksChanged)
     Q_PROPERTY(int activeAudioTrack READ activeAudioTrack NOTIFY activeTracksChanged)
     Q_PROPERTY(int activeSubtitleTrack READ activeSubtitleTrack NOTIFY activeTracksChanged)
+    Q_PROPERTY(QVariantList audioOutputDevices READ audioOutputDevices
+               NOTIFY audioOutputDevicesChanged)
+    Q_PROPERTY(QString selectedAudioOutputDeviceKey READ selectedAudioOutputDeviceKey
+               NOTIFY selectedAudioOutputDeviceChanged)
     Q_PROPERTY(bool resumeAvailable READ resumeAvailable NOTIFY resumeChanged)
     Q_PROPERTY(QString resumeTitle READ resumeTitle NOTIFY resumeChanged)
     Q_PROPERTY(qint64 resumePosition READ resumePosition NOTIFY resumeChanged)
@@ -86,6 +90,8 @@ public:
     QVariantList subtitleTracks() const;
     int activeAudioTrack() const;
     int activeSubtitleTrack() const;
+    QVariantList audioOutputDevices() const;
+    QString selectedAudioOutputDeviceKey() const;
     bool resumeAvailable() const;
     QString resumeTitle() const;
     qint64 resumePosition() const;
@@ -110,6 +116,8 @@ public:
     Q_INVOKABLE void selectAudioTrack(int id);
     Q_INVOKABLE void selectSubtitleTrack(int id);
     Q_INVOKABLE void refreshTracks();
+    Q_INVOKABLE void refreshAudioOutputDevices();
+    Q_INVOKABLE void selectAudioOutputDevice(const QString &deviceKey);
     Q_INVOKABLE bool resumeLastVideo();
     Q_INVOKABLE void dismissResume();
     Q_INVOKABLE void clearError();
@@ -130,6 +138,8 @@ signals:
     void mediaNavigationChanged();
     void tracksChanged();
     void activeTracksChanged();
+    void audioOutputDevicesChanged();
+    void selectedAudioOutputDeviceChanged();
     void resumeChanged();
     void fullscreenToggleRequested();
     void mediaSurfaceClicked();
@@ -154,6 +164,7 @@ private:
     void persistCurrentVideoProgress(bool force = false);
     void applyPendingResumePosition();
     void applyPendingSeekPosition();
+    void applyPreferredAudioOutput(bool selectModule);
     void rememberAudioTrackPreference(int id);
     void rememberSubtitleTrackPreference(int id);
     bool applyFolderTrackPreferences();
@@ -198,6 +209,12 @@ private:
     QVariantList subtitleTracks_;
     int activeAudioTrack_ = -1;
     int activeSubtitleTrack_ = -1;
+    QVariantList audioOutputDevices_;
+    QString selectedAudioOutputDeviceKey_;
+    QString preferredAudioOutputModule_;
+    QString preferredAudioOutputDeviceId_;
+    bool hasPreferredAudioOutput_ = false;
+    bool pauseAfterAudioOutputRestart_ = false;
     QString externalSubtitlePath_;
     bool audioPreferenceApplied_ = false;
     bool subtitlePreferenceApplied_ = false;

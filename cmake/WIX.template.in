@@ -22,6 +22,7 @@
         <?endif?>
 
         <MajorUpgrade
+            AllowSameVersionUpgrades="yes"
             Schedule="afterInstallInitialize"
             DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit."/>
 

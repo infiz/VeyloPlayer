@@ -15,7 +15,9 @@ repos:
       - id: check-yaml
       - id: destroyed-symlinks
       - id: end-of-file-fixer
+        exclude: ^(?:LICENSE|LICENSES/)
       - id: fix-byte-order-marker
       - id: mixed-line-ending
         args: [--fix=no]
       - id: trailing-whitespace
+        exclude: ^(?:LICENSE|LICENSES/)

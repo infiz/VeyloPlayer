@@ -1,0 +1,30 @@
+VEYLOPLAYER @PROJECT_VERSION@ SOURCE OFFER
+
+VeyloPlayer source
+------------------
+Git commit: @VEYLO_GIT_COMMIT@
+Source state: @VEYLO_SOURCE_STATE@
+Repository: https://github.com/infiz/VeyloPlayer
+Archive: @VEYLO_SOURCE_ARCHIVE@
+License: GPL-3.0-or-later
+
+Qt source
+---------
+Packaged version: @Qt6_VERSION@
+Source index: https://download.qt.io/official_releases/qt/
+License selection: LGPL-3.0-only / GPL-3.0-only
+
+VLC and contributed-library source
+----------------------------------
+Packaged version: @VEYLO_VLC_VERSION@
+VLC sources: https://www.videolan.org/vlc/download-sources.html
+Windows 3.0.23 source:
+https://download.videolan.org/videolan/vlc/3.0.23/vlc-3.0.23.tar.xz
+SHA-256: e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0
+
+The release download location must also provide the exact contributed-library
+sources and build recipes for every VLC plugin in the binary distribution.
+See THIRD_PARTY_NOTICES.md, SOURCE_CODE.md, and docs/distribution-compliance.md.
+
+This offer imposes no restriction on replacing the dynamically linked Qt and
+LibVLC libraries or reverse engineering for debugging such modifications.

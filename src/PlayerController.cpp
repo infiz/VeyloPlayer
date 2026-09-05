@@ -11,7 +11,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QLocale>
 #include <QMetaObject>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QSet>
 #include <QTimer>
@@ -24,6 +26,17 @@
 #include <utility>
 
 namespace {
+
+struct TrackMetadata {
+    int id = -1;
+    QString description;
+    QString language;
+};
+
+struct MediaTrackMetadata {
+    QList<TrackMetadata> audio;
+    QList<TrackMetadata> subtitles;
+};
 
 constexpr std::array<libvlc_event_e, 11> observedEvents = {
     libvlc_MediaPlayerOpening, libvlc_MediaPlayerPlaying,
@@ -42,12 +55,125 @@ QString pathFromUrl(const QUrl &url)
     return QFileInfo(url.toLocalFile()).absoluteFilePath();
 }
 
+QString decodedTrackText(const char *text)
+{
+    return text ? QString::fromUtf8(text).trimmed() : QString();
+}
+
+QString displayLanguage(const QString &languageCode)
+{
+    if (languageCode.isEmpty()) {
+        return {};
+    }
+    const QLocale::Language language = QLocale::codeToLanguage(languageCode);
+    if (language == QLocale::AnyLanguage || language == QLocale::C) {
+        return languageCode;
+    }
+    return QLocale::languageToString(language);
+}
+
+MediaTrackMetadata mediaTrackMetadata(libvlc_media_player_t *mediaPlayer)
+{
+    MediaTrackMetadata result;
+    libvlc_media_t *media = libvlc_media_player_get_media(mediaPlayer);
+    if (!media) {
+        return result;
+    }
+
+    libvlc_media_track_t **tracks = nullptr;
+    const unsigned count = libvlc_media_tracks_get(media, &tracks);
+    for (unsigned index = 0; index < count; ++index) {
+        const libvlc_media_track_t *track = tracks[index];
+        if (!track) {
+            continue;
+        }
+        const TrackMetadata metadata{
+            track->i_id,
+            decodedTrackText(track->psz_description),
+            displayLanguage(decodedTrackText(track->psz_language)),
+        };
+        if (track->i_type == libvlc_track_audio) {
+            result.audio.append(metadata);
+        } else if (track->i_type == libvlc_track_text) {
+            result.subtitles.append(metadata);
+        }
+    }
+    if (tracks) {
+        libvlc_media_tracks_release(tracks, count);
+    }
+    return result;
+}
+
+TrackMetadata metadataForTrack(const QList<TrackMetadata> &tracks, int id, int ordinal)
+{
+    const auto matchingId = std::find_if(
+        tracks.cbegin(), tracks.cend(), [id](const TrackMetadata &track) {
+            return track.id == id;
+        });
+    if (matchingId != tracks.cend()) {
+        return *matchingId;
+    }
+    return ordinal >= 0 && ordinal < tracks.size() ? tracks.at(ordinal) : TrackMetadata{};
+}
+
+QString enrichedTrackName(const QString &playerName,
+                          const TrackMetadata &metadata,
+                          const QString &fallback)
+{
+    static const QRegularExpression genericName(
+        QStringLiteral("^(?:track|audio|subtitle)\\s*#?\\s*\\d+$"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    QStringList parts;
+    const bool playerNameIsGeneric = genericName.match(playerName).hasMatch();
+    if (!playerName.isEmpty() && (!playerNameIsGeneric || metadata.description.isEmpty())) {
+        parts.append(playerName);
+    }
+
+    const auto appendDistinct = [&parts](const QString &part) {
+        if (part.isEmpty()) {
+            return;
+        }
+        const bool represented = std::any_of(
+            parts.cbegin(), parts.cend(), [&part](const QString &existing) {
+                return existing.contains(part, Qt::CaseInsensitive)
+                    || part.contains(existing, Qt::CaseInsensitive);
+            });
+        if (!represented) {
+            parts.append(part);
+        }
+    };
+    appendDistinct(metadata.description);
+    appendDistinct(metadata.language);
+    if (parts.isEmpty()) {
+        parts.append(playerName.isEmpty() ? fallback : playerName);
+    }
+    return parts.join(QStringLiteral(" — "));
+}
+
 QVariantMap trackEntry(const QString &label, int id, bool external = false)
 {
     return {
         {QStringLiteral("label"), label},
         {QStringLiteral("id"), id},
         {QStringLiteral("external"), external},
+    };
+}
+
+QString audioOutputKey(const QString &module, const QString &deviceId)
+{
+    return module + QChar(0x001f) + deviceId;
+}
+
+QVariantMap audioOutputEntry(const QString &label,
+                             const QString &module,
+                             const QString &deviceId)
+{
+    return {
+        {QStringLiteral("label"), label},
+        {QStringLiteral("module"), module},
+        {QStringLiteral("deviceId"), deviceId},
+        {QStringLiteral("key"), audioOutputKey(module, deviceId)},
     };
 }
 
@@ -149,6 +275,16 @@ PlayerController::PlayerController(QObject *parent)
     : QObject(parent)
     , videoSurface_(std::make_unique<VideoSurfaceWindow>())
 {
+    const QSettings settings;
+    hasPreferredAudioOutput_ = settings.contains(QStringLiteral("audioOutput/deviceId"));
+    preferredAudioOutputModule_ = settings.value(
+        QStringLiteral("audioOutput/module")).toString();
+    preferredAudioOutputDeviceId_ = settings.value(
+        QStringLiteral("audioOutput/deviceId")).toString();
+    if (hasPreferredAudioOutput_) {
+        selectedAudioOutputDeviceKey_ = audioOutputKey(
+            preferredAudioOutputModule_, preferredAudioOutputDeviceId_);
+    }
     connect(videoSurface_.get(), &VideoSurfaceWindow::doubleClicked,
             this, &PlayerController::fullscreenToggleRequested);
     connect(videoSurface_.get(), &VideoSurfaceWindow::clicked,
@@ -191,6 +327,7 @@ bool PlayerController::ensureMediaEngine()
     libvlc_video_set_key_input(mediaPlayer_, 0);
     libvlc_audio_set_volume(mediaPlayer_, volume_);
     libvlc_audio_set_mute(mediaPlayer_, muted_ ? 1 : 0);
+    applyPreferredAudioOutput(true);
     return true;
 }
 
@@ -233,6 +370,11 @@ QVariantList PlayerController::audioTracks() const { return audioTracks_; }
 QVariantList PlayerController::subtitleTracks() const { return subtitleTracks_; }
 int PlayerController::activeAudioTrack() const { return activeAudioTrack_; }
 int PlayerController::activeSubtitleTrack() const { return activeSubtitleTrack_; }
+QVariantList PlayerController::audioOutputDevices() const { return audioOutputDevices_; }
+QString PlayerController::selectedAudioOutputDeviceKey() const
+{
+    return selectedAudioOutputDeviceKey_;
+}
 bool PlayerController::resumeAvailable() const { return resumeAvailable_; }
 QString PlayerController::resumeTitle() const { return resumeTitle_; }
 qint64 PlayerController::resumePosition() const { return resumePosition_; }
@@ -693,11 +835,18 @@ void PlayerController::refreshTracks()
     if (!mediaPlayer_ || !veylo::isAudioOrVideo(currentKind_)) {
         return;
     }
+    const MediaTrackMetadata metadata = mediaTrackMetadata(mediaPlayer_);
+
     QVariantList audio;
+    int audioOrdinal = 0;
     libvlc_track_description_t *audioDescription = libvlc_audio_get_track_description(mediaPlayer_);
     for (auto *track = audioDescription; track; track = track->p_next) {
-        audio.append(trackEntry(displayTrackName(
-            track->psz_name, tr("Audio %1").arg(audio.size() + 1)), track->i_id));
+        const QString fallback = tr("Audio %1").arg(audioOrdinal + 1);
+        audio.append(trackEntry(enrichedTrackName(
+            displayTrackName(track->psz_name, {}),
+            metadataForTrack(metadata.audio, track->i_id, audioOrdinal), fallback),
+            track->i_id));
+        ++audioOrdinal;
     }
     if (audioDescription) {
         libvlc_track_description_list_release(audioDescription);
@@ -705,19 +854,23 @@ void PlayerController::refreshTracks()
 
     QVariantList subtitles = {trackEntry(tr("Off"), -1)};
     const QString externalName = QFileInfo(externalSubtitlePath_).fileName();
+    int subtitleOrdinal = 0;
     libvlc_track_description_t *subtitleDescription = libvlc_video_get_spu_description(mediaPlayer_);
     for (auto *track = subtitleDescription; track; track = track->p_next) {
         if (track->i_id < 0) {
             continue;
         }
-        QString label = displayTrackName(track->psz_name,
-                                         tr("Subtitle %1").arg(subtitles.size()));
+        const QString fallback = tr("Subtitle %1").arg(subtitleOrdinal + 1);
+        QString label = enrichedTrackName(
+            displayTrackName(track->psz_name, {}),
+            metadataForTrack(metadata.subtitles, track->i_id, subtitleOrdinal), fallback);
         const bool isExternal = !externalName.isEmpty()
             && label.contains(externalName, Qt::CaseInsensitive);
         if (isExternal) {
             label = tr("%1 — External").arg(label);
         }
         subtitles.append(trackEntry(label, track->i_id, isExternal));
+        ++subtitleOrdinal;
     }
     if (subtitleDescription) {
         libvlc_track_description_list_release(subtitleDescription);
@@ -735,6 +888,219 @@ void PlayerController::refreshTracks()
         || previousSubtitleId != activeSubtitleTrack_;
     if (tracksDiffer) emit tracksChanged();
     if (activeDiffer) emit activeTracksChanged();
+}
+
+void PlayerController::refreshAudioOutputDevices()
+{
+    if (!ensureMediaEngine()) {
+        return;
+    }
+
+    QVariantList devices;
+    const auto appendDevices = [this, &devices](libvlc_audio_output_device_t *list,
+                                                const QString &module) {
+        for (auto *device = list; device; device = device->p_next) {
+            const QString deviceId = decodedTrackText(device->psz_device);
+            QString label = decodedTrackText(device->psz_description);
+            if (deviceId.isEmpty() && label.isEmpty()) {
+                continue;
+            }
+            QString entryModule = module;
+            if (module.isEmpty() && hasPreferredAudioOutput_
+                && deviceId == preferredAudioOutputDeviceId_) {
+                entryModule = preferredAudioOutputModule_;
+            }
+            const QString key = audioOutputKey(entryModule, deviceId);
+            const bool duplicate = std::any_of(
+                devices.cbegin(), devices.cend(), [&key](const QVariant &candidate) {
+                    return candidate.toMap().value(QStringLiteral("key")).toString() == key;
+                });
+            if (duplicate) {
+                continue;
+            }
+            label = deviceId.isEmpty() ? tr("System default")
+                                       : (label.isEmpty() ? deviceId : label);
+            devices.append(audioOutputEntry(label, entryModule, deviceId));
+        }
+    };
+
+    libvlc_audio_output_device_t *currentDevices =
+        libvlc_audio_output_device_enum(mediaPlayer_);
+    if (currentDevices) {
+        appendDevices(currentDevices, {});
+        libvlc_audio_output_device_list_release(currentDevices);
+    } else {
+        struct ModuleDevices {
+            QString name;
+            QVariantList devices;
+        };
+        QList<ModuleDevices> availableModules;
+        libvlc_audio_output_t *outputs = libvlc_audio_output_list_get(vlcInstance_);
+        for (auto *output = outputs; output; output = output->p_next) {
+            const QString module = decodedTrackText(output->psz_name);
+            if (module.isEmpty()) {
+                continue;
+            }
+            QVariantList moduleEntries;
+            libvlc_audio_output_device_t *moduleDevices =
+                libvlc_audio_output_device_list_get(vlcInstance_, output->psz_name);
+            for (auto *device = moduleDevices; device; device = device->p_next) {
+                const QString deviceId = decodedTrackText(device->psz_device);
+                QString label = decodedTrackText(device->psz_description);
+                if (deviceId.isEmpty() && label.isEmpty()) {
+                    continue;
+                }
+                label = deviceId.isEmpty() ? tr("System default")
+                                           : (label.isEmpty() ? deviceId : label);
+                moduleEntries.append(audioOutputEntry(
+                    label, module, deviceId));
+            }
+            if (moduleDevices) {
+                libvlc_audio_output_device_list_release(moduleDevices);
+            }
+            if (!moduleEntries.isEmpty()) {
+                availableModules.append({module, moduleEntries});
+            }
+        }
+        if (outputs) {
+            libvlc_audio_output_list_release(outputs);
+        }
+
+        auto chosen = availableModules.cend();
+        if (!preferredAudioOutputModule_.isEmpty()) {
+            chosen = std::find_if(
+                availableModules.cbegin(), availableModules.cend(), [this](const auto &module) {
+                    return module.name == preferredAudioOutputModule_;
+                });
+        }
+#if defined(Q_OS_WIN)
+        if (chosen == availableModules.cend()) {
+            chosen = std::find_if(
+                availableModules.cbegin(), availableModules.cend(), [](const auto &module) {
+                    return module.name == QStringLiteral("mmdevice");
+                });
+        }
+#elif defined(Q_OS_MACOS)
+        if (chosen == availableModules.cend()) {
+            chosen = std::find_if(
+                availableModules.cbegin(), availableModules.cend(), [](const auto &module) {
+                    return module.name == QStringLiteral("auhal");
+                });
+        }
+#endif
+        if (chosen == availableModules.cend() && !availableModules.isEmpty()) {
+            chosen = availableModules.cbegin();
+        }
+        if (chosen != availableModules.cend()) {
+            devices = chosen->devices;
+        }
+    }
+
+    QString selectedKey = selectedAudioOutputDeviceKey_;
+    const auto matchingSelection = hasPreferredAudioOutput_
+        ? std::find_if(
+              devices.cbegin(), devices.cend(), [this](const QVariant &candidate) {
+                  const QVariantMap entry = candidate.toMap();
+                  return entry.value(QStringLiteral("deviceId")).toString()
+                      == preferredAudioOutputDeviceId_;
+              })
+        : devices.cend();
+    if (matchingSelection != devices.cend()) {
+        selectedKey = matchingSelection->toMap().value(QStringLiteral("key")).toString();
+    } else if (!hasPreferredAudioOutput_) {
+        char *currentDevice = libvlc_audio_output_device_get(mediaPlayer_);
+        const QString currentDeviceId = decodedTrackText(currentDevice);
+        libvlc_free(currentDevice);
+        const auto active = std::find_if(
+            devices.cbegin(), devices.cend(), [&currentDeviceId](const QVariant &candidate) {
+                return candidate.toMap().value(QStringLiteral("deviceId")).toString()
+                    == currentDeviceId;
+            });
+        selectedKey = active == devices.cend()
+            ? QString()
+            : active->toMap().value(QStringLiteral("key")).toString();
+    }
+
+    if (audioOutputDevices_ != devices) {
+        audioOutputDevices_ = devices;
+        emit audioOutputDevicesChanged();
+    }
+    if (selectedAudioOutputDeviceKey_ != selectedKey) {
+        selectedAudioOutputDeviceKey_ = selectedKey;
+        emit selectedAudioOutputDeviceChanged();
+    }
+}
+
+void PlayerController::selectAudioOutputDevice(const QString &deviceKey)
+{
+    const auto selected = std::find_if(
+        audioOutputDevices_.cbegin(), audioOutputDevices_.cend(),
+        [&deviceKey](const QVariant &candidate) {
+            return candidate.toMap().value(QStringLiteral("key")).toString() == deviceKey;
+        });
+    if (selected == audioOutputDevices_.cend() || !ensureMediaEngine()) {
+        setError(tr("The selected audio output is unavailable."));
+        return;
+    }
+
+    const QVariantMap entry = selected->toMap();
+    const QString module = entry.value(QStringLiteral("module")).toString();
+    const QString deviceId = entry.value(QStringLiteral("deviceId")).toString();
+
+    hasPreferredAudioOutput_ = true;
+    preferredAudioOutputModule_ = module;
+    preferredAudioOutputDeviceId_ = deviceId;
+    QSettings settings;
+    settings.setValue(QStringLiteral("audioOutput/module"), module);
+    settings.setValue(QStringLiteral("audioOutput/deviceId"), deviceId);
+
+    const QByteArray encodedDeviceId = deviceId.toUtf8();
+    if (module.isEmpty()) {
+        libvlc_audio_output_device_set(mediaPlayer_, nullptr, encodedDeviceId.constData());
+    } else {
+        const QByteArray encodedModule = module.toUtf8();
+        libvlc_audio_output_set(mediaPlayer_, encodedModule.constData());
+        libvlc_audio_output_device_set(
+            mediaPlayer_, encodedModule.constData(), encodedDeviceId.constData());
+
+        if (veylo::isAudioOrVideo(currentKind_)) {
+            const qint64 restartPosition = position_;
+            pauseAfterAudioOutputRestart_ = !playing_;
+            pendingSeekPosition_ = restartPosition;
+            setLoading(true);
+            libvlc_media_player_stop(mediaPlayer_);
+            if (libvlc_media_player_play(mediaPlayer_) != 0) {
+                pauseAfterAudioOutputRestart_ = false;
+                pendingSeekPosition_ = -1;
+                setLoading(false);
+                setError(tr("Playback could not be restarted with the selected audio output."));
+                return;
+            }
+        }
+    }
+
+    const QString newKey = audioOutputKey(module, deviceId);
+    if (selectedAudioOutputDeviceKey_ != newKey) {
+        selectedAudioOutputDeviceKey_ = newKey;
+        emit selectedAudioOutputDeviceChanged();
+    }
+    clearError();
+}
+
+void PlayerController::applyPreferredAudioOutput(bool selectModule)
+{
+    if (!mediaPlayer_ || !hasPreferredAudioOutput_) {
+        return;
+    }
+    const QByteArray encodedDeviceId = preferredAudioOutputDeviceId_.toUtf8();
+    if (selectModule && !preferredAudioOutputModule_.isEmpty()) {
+        const QByteArray encodedModule = preferredAudioOutputModule_.toUtf8();
+        libvlc_audio_output_set(mediaPlayer_, encodedModule.constData());
+        libvlc_audio_output_device_set(
+            mediaPlayer_, encodedModule.constData(), encodedDeviceId.constData());
+        return;
+    }
+    libvlc_audio_output_device_set(mediaPlayer_, nullptr, encodedDeviceId.constData());
 }
 
 void PlayerController::rememberAudioTrackPreference(int id)
@@ -912,10 +1278,15 @@ void PlayerController::handleVlcEvent(const libvlc_event_t &event)
         setLoading(false);
         setPlaying(true);
         ended_ = false;
+        applyPreferredAudioOutput(false);
         setSeekable(libvlc_media_player_is_seekable(mediaPlayer_) != 0
                     || pendingSeekPosition_ >= 0);
         applyPendingSeekPosition();
         applyPendingResumePosition();
+        if (pauseAfterAudioOutputRestart_) {
+            pauseAfterAudioOutputRestart_ = false;
+            libvlc_media_player_set_pause(mediaPlayer_, 1);
+        }
         updateMediaNavigation();
         refreshChapters();
         QTimer::singleShot(100, this, &PlayerController::refreshChapters);
