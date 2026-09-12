@@ -20,7 +20,16 @@ VeyloPlayer will be an open-source native C++20 desktop application using Qt Qui
 | Settings | `QSettings` | Platform-native per-user preferences |
 | Logging | `QLoggingCategory` | Structured application and playback diagnostics |
 
-Initial implementation baseline: Qt 6.10.3, C++20, CMake 3.28 or newer, MSVC 2022 on Windows, and Apple Clang from a supported Xcode release on macOS. LibVLC remains on the stable version 3 line until version 4 is officially stable and a deliberate migration is approved. Every dependency must be pinned to an exact version in the build configuration; release scripts must not download an unpinned `latest` artifact.
+Current Windows baseline: Qt 6.11.2, LibVLC 3.0.23, WiX 5.0.2, C++20, CMake 3.28 or newer, and MSVC 2022. macOS uses Apple Clang from a supported Xcode release. LibVLC remains on the stable version 3 line until version 4 is officially stable and a deliberate migration is approved. Every dependency must be pinned to an exact version in the build configuration; release scripts must not download an unpinned `latest` artifact.
+
+The Windows bootstrap pins aqtinstall to upstream commit
+`8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b` (3.3.1.dev92), the merged
+[Qt 6.11 repository-layout fix](https://github.com/miurahr/aqtinstall/pull/1000).
+The latest published release, 3.3.0, does not support that layout. Replace this
+source pin with a stable release once it includes the fix. WiX 6/7 are deferred
+because they introduce maintenance-fee/EULA requirements; WiX 5.0.2 is the
+latest release before those changes. CPack's WiX generator remains in version-4
+mode, which also supports the compatible WiX 5 command line and XML schema.
 
 ## 2. Why this stack
 

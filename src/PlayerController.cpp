@@ -2,6 +2,7 @@
 
 #include "ChapterNavigation.h"
 #include "FolderSequence.h"
+#include "GraphicsDeviceMonitor.h"
 #include "NaturalSort.h"
 #include "PlaybackResume.h"
 #include "TrackPreference.h"
@@ -292,10 +293,24 @@ PlayerController::PlayerController(QObject *parent)
     connect(videoSurface_.get(), &VideoSurfaceWindow::pointerActivity,
             this, &PlayerController::mediaSurfaceActivity);
     loadResumeState();
+#ifdef Q_OS_WIN
+    graphicsMonitor_ = new GraphicsDeviceMonitor;
+    connect(graphicsMonitor_, &GraphicsDeviceMonitor::deviceLost, this, [this] {
+        graphicsAvailable_ = false;
+        suspendForGraphicsReset();
+    });
+    connect(graphicsMonitor_, &GraphicsDeviceMonitor::deviceRestored, this, [this] {
+        graphicsAvailable_ = true;
+        resumeAfterGraphicsReset();
+    });
+    connect(graphicsMonitor_, &QThread::finished, graphicsMonitor_, &QObject::deleteLater);
+    graphicsMonitor_->start();
+#endif
 }
 
 bool PlayerController::ensureMediaEngine()
 {
+    if (retiringPlayerThread_ || graphicsRecoveryPending_) return false;
     if (vlcInstance_ && mediaPlayer_) {
         return true;
     }
@@ -308,8 +323,16 @@ bool PlayerController::ensureMediaEngine()
     }
 #endif
 
-    const char *arguments[] = {"--no-video-title-show", "--quiet"};
-    vlcInstance_ = libvlc_new(static_cast<int>(std::size(arguments)), arguments);
+    const char *arguments[] = {
+        "--no-video-title-show", "--quiet",
+#if defined(Q_OS_WIN)
+        // Prefer hardware decoding for supported codecs. Recreate the player
+        // after device loss so it cannot retain the previous driver's devices.
+        "--avcodec-hw=any", "--vout=direct3d11",
+#endif
+    };
+    if (!vlcInstance_)
+        vlcInstance_ = libvlc_new(static_cast<int>(std::size(arguments)), arguments);
     if (!vlcInstance_) {
         setError(tr("The media engine could not be started."));
         return false;
@@ -333,6 +356,13 @@ bool PlayerController::ensureMediaEngine()
 
 PlayerController::~PlayerController()
 {
+    if (graphicsMonitor_) graphicsMonitor_->requestInterruption();
+    if (retiringPlayerThread_) {
+        // A retiring output can send window messages. Keep its native parent
+        // alive until it finishes; never join that worker on the GUI thread.
+        auto *surface = videoSurface_.release();
+        connect(retiringPlayerThread_, &QThread::finished, surface, &QObject::deleteLater);
+    }
     persistCurrentVideoProgress(true);
     if (mediaPlayer_) {
         detachVlcEvents();
@@ -387,6 +417,7 @@ QUrl PlayerController::imageSource() const
 
 bool PlayerController::openFile(const QString &path)
 {
+    if (!canReplaceMedia()) return false;
     pendingResumePosition_ = -1;
     dismissResume();
     clearRecursiveQueue();
@@ -396,6 +427,7 @@ bool PlayerController::openFile(const QString &path)
 
 bool PlayerController::openFolder(const QString &path)
 {
+    if (!canReplaceMedia()) return false;
     const QFileInfo folderInfo(path);
     if (!folderInfo.exists() || !folderInfo.isDir() || !folderInfo.isReadable()) {
         setError(tr("The folder is missing or cannot be read: %1").arg(folderInfo.fileName()));
@@ -440,6 +472,7 @@ bool PlayerController::openUrl(const QUrl &url)
 
 bool PlayerController::openUrls(const QList<QUrl> &urls)
 {
+    if (!canReplaceMedia()) return false;
     if (urls.size() == 1) {
         return openUrl(urls.constFirst());
     }
@@ -498,8 +531,18 @@ bool PlayerController::openUrls(const QList<QUrl> &urls)
     return false;
 }
 
+bool PlayerController::canReplaceMedia()
+{
+    if (graphicsRecoveryPending_ || retiringPlayerThread_ || !graphicsAvailable_) {
+        setError(tr("Waiting for the graphics device. Please try opening the file again shortly."));
+        return false;
+    }
+    return true;
+}
+
 bool PlayerController::openFileInternal(const QString &path, bool automaticAdvance)
 {
+    if (!canReplaceMedia()) return false;
     const QFileInfo info(path);
     if (!info.exists() || !info.isFile() || !info.isReadable()) {
         setError(tr("The file is missing or cannot be read: %1").arg(info.fileName()));
@@ -552,8 +595,11 @@ bool PlayerController::openImage(const QString &path)
         return false;
     }
     if (mediaPlayer_) {
+        detachVlcEvents();
+        ++playerGeneration_;
         libvlc_media_player_stop(mediaPlayer_);
         libvlc_media_player_set_media(mediaPlayer_, nullptr);
+        attachVlcEvents();
     }
     currentFilePath_ = path;
     title_ = QFileInfo(path).fileName();
@@ -580,6 +626,8 @@ bool PlayerController::openPlayableMedia(const QString &path,
                                          veylo::MediaKind kind,
                                          bool automaticAdvance)
 {
+    restoreRecoveryTracks_ = false;
+    pauseAfterAudioOutputRestart_ = false;
     if (!ensureMediaEngine()) {
         return false;
     }
@@ -589,10 +637,13 @@ bool PlayerController::openPlayableMedia(const QString &path,
         setError(tr("The media engine could not open %1.").arg(QFileInfo(path).fileName()));
         return false;
     }
+    detachVlcEvents();
+    ++playerGeneration_;
     libvlc_media_player_stop(mediaPlayer_);
     attachVideoOutput();
     libvlc_media_player_set_media(mediaPlayer_, media);
     libvlc_media_release(media);
+    attachVlcEvents();
 
     currentFilePath_ = path;
     title_ = QFileInfo(path).fileName();
@@ -623,6 +674,14 @@ bool PlayerController::openPlayableMedia(const QString &path,
 
 void PlayerController::playPause()
 {
+    if (graphicsRecoveryPending_) {
+        playAfterGraphicsRecovery_ = !playAfterGraphicsRecovery_;
+        return;
+    }
+    if (!mediaPlayer_ && isVideo()) {
+        play();
+        return;
+    }
     if (mediaPlayer_ && veylo::isAudioOrVideo(currentKind_)) {
         playing_ ? pause() : play();
     }
@@ -630,6 +689,13 @@ void PlayerController::playPause()
 
 void PlayerController::play()
 {
+    if (graphicsRecoveryPending_ || (!mediaPlayer_ && isVideo())) {
+        graphicsRecoveryPending_ = true;
+        playAfterGraphicsRecovery_ = true;
+        setLoading(true);
+        resumeAfterGraphicsReset();
+        return;
+    }
     if (mediaPlayer_ && veylo::isAudioOrVideo(currentKind_)) {
         if (ended_) {
             ended_ = false;
@@ -647,6 +713,10 @@ void PlayerController::play()
 
 void PlayerController::pause()
 {
+    if (graphicsRecoveryPending_) {
+        playAfterGraphicsRecovery_ = false;
+        return;
+    }
     if (mediaPlayer_ && veylo::isAudioOrVideo(currentKind_)) {
         persistCurrentVideoProgress(true);
         libvlc_media_player_set_pause(mediaPlayer_, 1);
@@ -655,6 +725,14 @@ void PlayerController::pause()
 
 void PlayerController::stop()
 {
+    if (graphicsRecoveryPending_) {
+        graphicsRecoveryPending_ = false;
+        playAfterGraphicsRecovery_ = false;
+        automaticAdvance_ = false;
+        persistCurrentVideoProgress(true);
+        setLoading(false);
+        return;
+    }
     if (mediaPlayer_) {
         persistCurrentVideoProgress(true);
         automaticAdvance_ = false;
@@ -664,6 +742,12 @@ void PlayerController::stop()
 
 void PlayerController::seek(qint64 positionMs)
 {
+    if (graphicsRecoveryPending_) {
+        position_ = std::clamp<qint64>(positionMs, 0, std::max<qint64>(duration_, 0));
+        pendingSeekPosition_ = position_;
+        emit positionChanged();
+        return;
+    }
     if (!mediaPlayer_ || !veylo::isAudioOrVideo(currentKind_)
         || (!seekable_ && !ended_ && pendingSeekPosition_ < 0)) {
         return;
@@ -692,6 +776,13 @@ void PlayerController::seek(qint64 positionMs)
     }
 
     libvlc_media_player_set_time(mediaPlayer_, static_cast<libvlc_time_t>(bounded));
+    // Paused playback may not emit TimeChanged after a seek. Keep the slider
+    // and saved progress at the requested position when its binding resumes.
+    if (position_ != bounded) {
+        position_ = bounded;
+        emit positionChanged();
+    }
+    persistCurrentVideoProgress(true);
 }
 
 void PlayerController::setVolume(int volume)
@@ -883,7 +974,21 @@ void PlayerController::refreshTracks()
     subtitleTracks_ = subtitles;
     activeAudioTrack_ = libvlc_audio_get_track(mediaPlayer_);
     activeSubtitleTrack_ = libvlc_video_get_spu(mediaPlayer_);
-    applyFolderTrackPreferences();
+    if (restoreRecoveryTracks_) {
+        const bool audioRestored = recoveryAudioTrack_ < 0
+            || libvlc_audio_set_track(mediaPlayer_, recoveryAudioTrack_) == 0;
+        const bool subtitleRestored = libvlc_video_set_spu(
+            mediaPlayer_, recoverySubtitleTrack_) == 0;
+        if (audioRestored && subtitleRestored) {
+            restoreRecoveryTracks_ = false;
+            audioPreferenceApplied_ = true;
+            subtitlePreferenceApplied_ = true;
+            activeAudioTrack_ = libvlc_audio_get_track(mediaPlayer_);
+            activeSubtitleTrack_ = libvlc_video_get_spu(mediaPlayer_);
+        }
+    } else {
+        applyFolderTrackPreferences();
+    }
     const bool activeDiffer = previousAudioId != activeAudioTrack_
         || previousSubtitleId != activeSubtitleTrack_;
     if (tracksDiffer) emit tracksChanged();
@@ -1189,6 +1294,7 @@ bool PlayerController::applyFolderTrackPreferences()
 
 bool PlayerController::resumeLastVideo()
 {
+    if (!canReplaceMedia()) return false;
     const QFileInfo info(resumeFilePath_);
     if (!resumeAvailable_ || !info.exists() || !info.isFile() || !info.isReadable()
         || veylo::mediaKindForPath(info.absoluteFilePath()) != veylo::MediaKind::Video) {
@@ -1236,7 +1342,10 @@ void PlayerController::vlcEventCallback(const libvlc_event_t *event, void *userD
     if (!event || !userData) return;
     auto *controller = static_cast<PlayerController *>(userData);
     const libvlc_event_t eventCopy = *event;
-    QMetaObject::invokeMethod(controller, [controller, eventCopy] {
+    const quint64 generation = controller->playerGeneration_.load();
+    QMetaObject::invokeMethod(controller, [controller, eventCopy, generation] {
+        if (generation != controller->playerGeneration_.load() || !controller->mediaPlayer_)
+            return;
         controller->handleVlcEvent(eventCopy);
     }, Qt::QueuedConnection);
 }
@@ -1316,9 +1425,20 @@ void PlayerController::handleVlcEvent(const libvlc_event_t &event)
         advanceAfterPlayback();
         break;
     case libvlc_MediaPlayerEncounteredError:
-        handlePlaybackError();
+        // Allow the independent device probe to report a driver reset before
+        // treating the error as a bad file and advancing the folder queue.
+        if (isVideo()) {
+            const quint64 generation = playerGeneration_.load();
+            QTimer::singleShot(1000, this, [this, generation] {
+                if (generation == playerGeneration_.load() && mediaPlayer_)
+                    handlePlaybackError();
+            });
+        } else {
+            handlePlaybackError();
+        }
         break;
     case libvlc_MediaPlayerTimeChanged:
+        if (pendingSeekPosition_ >= 0) break;
         position_ = static_cast<qint64>(event.u.media_player_time_changed.new_time);
         emit positionChanged();
         persistCurrentVideoProgress();
@@ -1351,12 +1471,88 @@ void PlayerController::handleVlcEvent(const libvlc_event_t &event)
 
 void PlayerController::handlePlaybackError()
 {
+    if (!graphicsAvailable_ && isVideo()) {
+        suspendForGraphicsReset();
+        return;
+    }
     setLoading(false);
     setPlaying(false);
     setError(tr("VeyloPlayer could not play %1.").arg(title_));
     if (automaticAdvance_ && consecutiveAdvanceFailures_ < 100) {
         ++consecutiveAdvanceFailures_;
         advanceAfterPlayback();
+    }
+}
+
+void PlayerController::suspendForGraphicsReset()
+{
+    if (!isVideo() || graphicsRecoveryPending_ || !mediaPlayer_ || ended_) return;
+    // Freeze the UI position before teardown emits Stopped/TimeChanged events.
+    graphicsRecoveryPending_ = true;
+    playAfterGraphicsRecovery_ = !pauseAfterAudioOutputRestart_ && (playing_ || loading_);
+    recoveryAudioTrack_ = activeAudioTrack_;
+    recoverySubtitleTrack_ = activeSubtitleTrack_;
+    pendingSeekPosition_ = pendingResumePosition_ > 0 ? pendingResumePosition_
+        : (pendingSeekPosition_ >= 0 ? pendingSeekPosition_ : position_);
+    position_ = pendingSeekPosition_;
+    pendingResumePosition_ = -1;
+    persistCurrentVideoProgress(true);
+    detachVlcEvents();
+    ++playerGeneration_;
+    auto *oldPlayer = std::exchange(mediaPlayer_, nullptr);
+    auto *instance = vlcInstance_;
+    libvlc_retain(instance);
+    setPlaying(false);
+    setLoading(true);
+    clearError();
+    retiringPlayerThread_ = QThread::create([oldPlayer, instance] {
+        // LibVLC 3 stop is synchronous and may wait for the removed device.
+        // Keep this off the GUI thread so controls and native messages work.
+        libvlc_media_player_stop(oldPlayer);
+        libvlc_media_player_release(oldPlayer);
+        libvlc_release(instance);
+    });
+    connect(retiringPlayerThread_, &QThread::finished, this, [this] {
+        retiringPlayerThread_ = nullptr;
+        resumeAfterGraphicsReset();
+    });
+    connect(retiringPlayerThread_, &QThread::finished,
+            retiringPlayerThread_, &QObject::deleteLater);
+    retiringPlayerThread_->start();
+}
+
+void PlayerController::resumeAfterGraphicsReset()
+{
+    if (!graphicsRecoveryPending_ || !graphicsAvailable_ || retiringPlayerThread_) return;
+    graphicsRecoveryPending_ = false;
+    clearError();
+    if (!ensureMediaEngine()) {
+        setLoading(false);
+        setError(tr("The video player could not be recreated. Please reopen the video."));
+        return;
+    }
+    const QByteArray location = QUrl::fromLocalFile(currentFilePath_).toEncoded();
+    libvlc_media_t *media = libvlc_media_new_location(vlcInstance_, location.constData());
+    if (!media) {
+        setLoading(false);
+        setError(tr("The video could not be reopened after the graphics reset."));
+        return;
+    }
+    const QByteArray startTime = QByteArray(":start-time=")
+        + QByteArray::number(std::max<qint64>(0, pendingSeekPosition_) / 1000.0, 'f', 3);
+    libvlc_media_add_option(media, startTime.constData());
+    if (!externalSubtitlePath_.isEmpty()) {
+        const QByteArray subtitle = QUrl::fromLocalFile(externalSubtitlePath_).toEncoded();
+        libvlc_media_slaves_add(media, libvlc_media_slave_type_subtitle, 4, subtitle.constData());
+    }
+    libvlc_media_player_set_media(mediaPlayer_, media);
+    libvlc_media_release(media);
+    restoreRecoveryTracks_ = true;
+    pauseAfterAudioOutputRestart_ = !playAfterGraphicsRecovery_;
+    if (libvlc_media_player_play(mediaPlayer_) != 0) {
+        pauseAfterAudioOutputRestart_ = false;
+        setLoading(false);
+        setError(tr("Playback could not resume after the graphics reset. Please reopen the video."));
     }
 }
 

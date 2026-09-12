@@ -4,6 +4,10 @@
 #include <QGuiApplication>
 #include <QMouseEvent>
 
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#endif
+
 VideoSurfaceWindow::VideoSurfaceWindow(QWindow *parent)
     : QWindow(parent)
 {
@@ -32,6 +36,36 @@ VideoSurfaceWindow::VideoSurfaceWindow(QWindow *parent)
     pointerPollTimer_.start();
     create();
 }
+
+#ifdef Q_OS_WIN
+bool VideoSurfaceWindow::nativeEvent(const QByteArray &eventType, void *message,
+                                    qintptr *result)
+{
+    const auto *nativeMessage = static_cast<MSG *>(message);
+    if (nativeMessage->message == WM_PAINT) {
+        // Qt does not paint this plain QWindow. Cover the loading surface
+        // until LibVLC's child window is ready to display video.
+        PAINTSTRUCT paint;
+        const HDC context = BeginPaint(nativeMessage->hwnd, &paint);
+        FillRect(context, &paint.rcPaint,
+                 static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+        EndPaint(nativeMessage->hwnd, &paint);
+        *result = 0;
+        return true;
+    }
+    if (nativeMessage->message == WM_ERASEBKGND) {
+        // This native window sits above the QML canvas. Paint its uncovered
+        // background black while LibVLC is creating or replacing its output.
+        RECT bounds;
+        GetClientRect(nativeMessage->hwnd, &bounds);
+        FillRect(reinterpret_cast<HDC>(nativeMessage->wParam), &bounds,
+                 static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+        *result = 1;
+        return true;
+    }
+    return QWindow::nativeEvent(eventType, message, result);
+}
+#endif
 
 void VideoSurfaceWindow::mouseMoveEvent(QMouseEvent *event)
 {

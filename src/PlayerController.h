@@ -11,8 +11,11 @@
 #include <vlc/vlc.h>
 
 #include <memory>
+#include <atomic>
 
 class VideoSurfaceWindow;
+class GraphicsDeviceMonitor;
+class QThread;
 
 class PlayerController final : public QObject
 {
@@ -146,6 +149,7 @@ signals:
     void mediaSurfaceActivity();
 
 private:
+    friend class PlayerRecoveryTests;
     static void vlcEventCallback(const libvlc_event_t *event, void *userData);
 
     bool openFileInternal(const QString &path, bool automaticAdvance);
@@ -153,11 +157,14 @@ private:
     bool openImage(const QString &path);
     bool openPlayableMedia(const QString &path, veylo::MediaKind kind, bool automaticAdvance);
     bool ensureMediaEngine();
+    bool canReplaceMedia();
     void attachVlcEvents();
     void detachVlcEvents();
     void attachVideoOutput();
     void handleVlcEvent(const libvlc_event_t &event);
     void handlePlaybackError();
+    void suspendForGraphicsReset();
+    void resumeAfterGraphicsReset();
     void advanceAfterPlayback();
     void loadResumeState();
     void rememberOpenedVideo(const QString &path);
@@ -184,6 +191,15 @@ private:
     static QString displayTrackName(const char *name, const QString &fallback);
 
     std::unique_ptr<VideoSurfaceWindow> videoSurface_;
+    GraphicsDeviceMonitor *graphicsMonitor_ = nullptr;
+    QThread *retiringPlayerThread_ = nullptr;
+    std::atomic<quint64> playerGeneration_{0};
+    bool graphicsAvailable_ = true;
+    bool graphicsRecoveryPending_ = false;
+    bool playAfterGraphicsRecovery_ = false;
+    int recoveryAudioTrack_ = -1;
+    int recoverySubtitleTrack_ = -1;
+    bool restoreRecoveryTracks_ = false;
     libvlc_instance_t *vlcInstance_ = nullptr;
     libvlc_media_player_t *mediaPlayer_ = nullptr;
     QString currentFilePath_;

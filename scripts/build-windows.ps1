@@ -4,9 +4,9 @@ param(
     [string]$Configuration = "Debug",
     [switch]$Bootstrap,
     [switch]$Package,
-    [string]$QtVersion = "6.10.3",
+    [string]$QtVersion = "6.11.2",
     [string]$VlcVersion = "3.0.23",
-    [string]$WixVersion = "4.0.6"
+    [string]$WixVersion = "5.0.2"
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +78,7 @@ New-Item -ItemType Directory -Force -Path $buildDirectory | Out-Null
 
 & cmake -S $repositoryRoot -B $buildDirectory `
     -G "Visual Studio 17 2022" -A x64 `
+    -U "Qt6*_DIR" -U "QT_DIR" -U "WINDEPLOYQT_EXECUTABLE" `
     "-DCMAKE_PREFIX_PATH=$qtRoot" `
     "-DLIBVLC_ROOT=$vlcRoot" `
     "-DVEYLO_MSVC_RUNTIME_DIR=$msvcRuntimeDirectory" `

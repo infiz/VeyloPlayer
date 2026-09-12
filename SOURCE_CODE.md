@@ -22,7 +22,7 @@ source archives are available from:
 <https://download.qt.io/official_releases/qt/>
 
 At minimum, publish the exact sources corresponding to every deployed Qt DLL,
-framework, QML module, and plugin. For the Windows 6.10.3 baseline this includes
+framework, QML module, and plugin. For the Windows 6.11.2 baseline this includes
 `qtbase`, `qtdeclarative`, `qtsvg`, and any other module named by the packaged
 Qt SBOM. Preserve Qt's source-side license files and third-party notices.
 
