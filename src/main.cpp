@@ -11,6 +11,8 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QQmlApplicationEngine>
+#include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QSettings>
 #include <QScreen>
 #include <QTimer>
@@ -26,6 +28,10 @@ int main(int argc, char *argv[])
 {
 #ifdef Q_OS_WIN
     SetCurrentProcessExplicitAppUserModelID(L"org.veyloplayer.app");
+    // Driver installation can invalidate every GPU device in the process.
+    // Keep the controls and image viewer independent of that device lifetime.
+    // This must be selected before any QQuickWindow is constructed.
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
 #endif
 
     QCoreApplication::setOrganizationName(QStringLiteral("VeyloPlayer"));

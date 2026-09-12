@@ -1,6 +1,7 @@
 #include "ChapterNavigation.h"
 #include "ChapterNavigation.h"
 #include "FolderSequence.h"
+#include "GraphicsRecovery.h"
 #include "MediaFile.h"
 #include "NaturalSort.h"
 #include "PlaybackResume.h"
@@ -19,6 +20,7 @@ class CoreTests final : public QObject
     Q_OBJECT
 
 private slots:
+    void graphicsRecoveryWaitsForStableHardware();
     void naturalNumbersSortNumerically();
     void naturalSortIsCaseInsensitiveAndDeterministic();
     void classifiesSupportedMedia();
@@ -32,6 +34,23 @@ private slots:
     void timelineChapterPositionsAreVisibleAndOrdered();
     void windowPlacementStaysVisibleOnAvailableScreens();
 };
+
+void CoreTests::graphicsRecoveryWaitsForStableHardware()
+{
+    veylo::GraphicsRecovery recovery;
+    QCOMPARE(recovery.sample(true), veylo::GraphicsRecovery::Unchanged);
+    QCOMPARE(recovery.sample(false), veylo::GraphicsRecovery::Lost);
+    QCOMPARE(recovery.sample(false), veylo::GraphicsRecovery::Unchanged);
+    for (int sample = 0; sample < 9; ++sample)
+        QCOMPARE(recovery.sample(true), veylo::GraphicsRecovery::Unchanged);
+    // Another reset must restart the entire settling period.
+    QCOMPARE(recovery.sample(false), veylo::GraphicsRecovery::Unchanged);
+    for (int sample = 0; sample < 9; ++sample)
+        QCOMPARE(recovery.sample(true), veylo::GraphicsRecovery::Unchanged);
+    QCOMPARE(recovery.sample(true), veylo::GraphicsRecovery::Restored);
+    QCOMPARE(recovery.sample(true), veylo::GraphicsRecovery::Unchanged);
+    QCOMPARE(recovery.sample(false), veylo::GraphicsRecovery::Lost);
+}
 
 void CoreTests::naturalNumbersSortNumerically()
 {

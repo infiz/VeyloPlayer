@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(VeyloPlayer
     # Release version: update this value manually for each release.
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "A modern open-source media player for Windows and macOS"
     LANGUAGES CXX
 )
@@ -44,6 +44,9 @@ qt_add_executable(VeyloPlayer
     src/CurrentImageProvider.h
     src/FolderSequence.cpp
     src/FolderSequence.h
+    src/GraphicsDeviceMonitor.cpp
+    src/GraphicsDeviceMonitor.h
+    src/GraphicsRecovery.h
     src/LegalInfo.cpp
     src/LegalInfo.h
     src/MediaFile.cpp
@@ -209,7 +212,7 @@ endforeach()
 if(WIN32)
     enable_language(RC)
     target_sources(VeyloPlayer PRIVATE assets/branding/VeyloPlayer.rc)
-    target_link_libraries(VeyloPlayer PRIVATE shell32)
+    target_link_libraries(VeyloPlayer PRIVATE shell32 d3d11 dxgi)
 
     if(NOT LIBVLC_RUNTIME_DIR)
         message(FATAL_ERROR "LIBVLC_RUNTIME_DIR is required on Windows so LibVLC DLLs and plugins can be packaged")

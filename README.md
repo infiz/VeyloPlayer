@@ -40,6 +40,38 @@ VeyloPlayer's original source code is licensed under
 
 See [product requirements](docs/requirements.md) and the [technical stack](docs/technical-stack.md).
 
+## Graphics-driver updates on Windows
+
+The Windows player requests GPU video decoding and Direct3D 11 video output.
+Codecs unsupported by the installed GPU can still use LibVLC's software decoder.
+The controls and image viewer use Qt's software renderer so they remain independent
+of the video device during driver replacement.
+
+A background Direct3D probe detects device removal/reset. The player saves its
+position and releases the old playback session in the background. After hardware
+devices for the original adapters are available for about five seconds, it recreates
+the video player and resumes from the saved position. A video that was paused stays
+paused; Stop cancels automatic resume. Queue, volume, and track selections are
+retained. The video surface stays black while its output is being recreated.
+
+Windows does not provide a universal notification that a driver installer has
+started or finished: recovery follows device loss and stable hardware availability.
+It cannot guarantee a pause before an unannounced reset, or recover from a fatal
+crash inside the driver/LibVLC. If driver teardown stalls, the UI remains responsive
+but playback waits for teardown to finish. HDMI/DisplayPort audio can also be
+interrupted when its device is reinstalled. macOS rendering is unchanged.
+
+To check a driver upgrade on Windows, play a video, note its position, and update
+the display driver. After the desktop returns, check that video and controls still
+respond, playback advances, seeking works, and pause/resume works. Repeat while
+paused and in fullscreen, and check JPEG viewing as well. A display-mode change
+alone is not equivalent to a driver upgrade.
+
+`VeyloPlayerRecoveryTests` generates a local video and exercises simulated device
+loss, stale callbacks, position restoration, paused playback, and Stop cancellation.
+The core tests cover repeated resets and the hardware settling interval. These
+checks do not replace testing a real driver upgrade on NVIDIA hardware.
+
 ## Build on Windows
 
 Prerequisites:
@@ -48,6 +80,7 @@ Prerequisites:
 - Visual Studio 2022 with **Desktop development with C++**.
 - CMake 3.28 or newer.
 - Python 3 available through the `py` launcher.
+- Git available on `PATH` for the pinned Qt downloader source revision.
 
 From PowerShell:
 
@@ -81,7 +114,7 @@ It bootstraps missing pinned dependencies, builds the Release application, runs
 the tests, and creates the available Windows packages.
 
 Packages are written to `dist/`. The bootstrap process downloads a pinned,
-checksum-verified WiX Toolset 4 into `.deps/`, so a machine-wide WiX installation
+checksum-verified WiX Toolset 5.0.2 into `.deps/`, so a machine-wide WiX installation
 is not required. Packaging fails if either the ZIP or MSI cannot be created. The
 installer adds VeyloPlayer to the Start menu and Windows search. Its completion
 screen also includes a checked **Launch VeyloPlayer** option.

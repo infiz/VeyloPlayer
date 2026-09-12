@@ -40,7 +40,7 @@ legal review before a public binary release when required.
 
 ## Windows baseline audit
 
-The current Windows process downloads Qt 6.10.3 and the official VLC 3.0.23
+The current Windows process downloads Qt 6.11.2 and the official VLC 3.0.23
 64-bit archive. The entire VLC plugin directory is currently packaged. That
 directory contains substantially more functionality than the MVP uses, so it
 must receive a full binary/license/patent audit. A future hardening change should

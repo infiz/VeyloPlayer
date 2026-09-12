@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$QtVersion = "6.10.3",
+    [string]$QtVersion = "6.11.2",
     [string]$VlcVersion = "3.0.23",
-    [string]$WixVersion = "4.0.6"
+    [string]$WixVersion = "5.0.2"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,7 +32,11 @@ if (-not (Test-Path -LiteralPath (Join-Path $qtInstall "bin\qtpaths.exe"))) {
         & py -m venv $pythonEnvironment
     }
     $bootstrapPython = Join-Path $pythonEnvironment "Scripts\python.exe"
-    & $bootstrapPython -m pip install --disable-pip-version-check "aqtinstall==3.3.0"
+    # The latest published aqtinstall (3.3.0) cannot read Qt 6.11's split
+    # Windows repositories. Pin the merged upstream fix (PR #1000).
+    & $bootstrapPython -m pip install --disable-pip-version-check `
+        "aqtinstall @ git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b"
+    if ($LASTEXITCODE -ne 0) { throw "Installing the Qt downloader failed." }
     & $bootstrapPython -m aqt install-qt windows desktop $QtVersion win64_msvc2022_64 `
         --outputdir $qtDirectory `
         --modules qtshadertools
@@ -124,6 +128,7 @@ if (-not (Test-Path -LiteralPath $wixExecutable)) {
     $wixPackage = Join-Path $downloadsDirectory "wix.$WixVersion.nupkg"
     $expectedWixSha256 = switch ($WixVersion) {
         "4.0.6" { "a94dd42ae1fb56b32da180e2173ceda4f0d10b4c8871c5ee59ecb502131a1eb6" }
+        "5.0.2" { "f30ef0c74e2a986126539c5780be93ac24e8136eaf723b1937b26272703ae173" }
         default { throw "No trusted checksum is configured for WiX $WixVersion." }
     }
     if (-not (Test-Path -LiteralPath $wixPackage)) {

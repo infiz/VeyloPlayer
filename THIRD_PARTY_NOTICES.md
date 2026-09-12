@@ -16,12 +16,12 @@ Quick Layouts, Quick Shapes, SVG, platform and image-format plugins, and their
 runtime dependencies.
 
 - Copyright: The Qt Company Ltd. and other Qt contributors.
-- Windows release baseline: Qt 6.10.3.
+- Windows release baseline: Qt 6.11.2.
 - License used by VeyloPlayer distributions: LGPL-3.0-only, or GPL-3.0-only
   where a shipped Qt component is not offered under LGPL-3.0-only.
 - License texts: `LICENSE` and `LICENSES/LGPL-3.0.txt`.
 - Licensing information: <https://doc.qt.io/qt-6/licensing.html>
-- Exact Qt 6.10.3 sources: <https://download.qt.io/official_releases/qt/6.10/6.10.3/submodules/>
+- Exact Qt 6.11.2 sources: <https://download.qt.io/official_releases/qt/6.11/6.11.2/submodules/>
 - Qt source repositories: <https://code.qt.io/cgit/qt/>
 
 Qt contains third-party code under additional permissive and open-source

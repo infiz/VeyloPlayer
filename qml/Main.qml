@@ -642,7 +642,7 @@ ApplicationWindow {
         Rectangle {
             id: mediaArea
             anchors.fill: parent
-            color: Theme.canvas
+            color: Player.isVideo ? "black" : Theme.canvas
 
             TapHandler {
                 enabled: Player.isAudio
