@@ -124,6 +124,7 @@ cmake -E remove_directory "${build_directory}/VeyloPlayer.app"
 
 cmake -S "${repository_root}" -B "${build_directory}" -G Ninja \
     -DCMAKE_BUILD_TYPE="${configuration}" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 \
     -DCMAKE_PREFIX_PATH="${qt_root}" \
     -DLIBVLC_ROOT="${vlc_sdk_root}" \
     -DLIBVLC_INCLUDE_DIR="${vlc_sdk_root}/include" \

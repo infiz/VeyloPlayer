@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
 
+# macOS 26 is the supported baseline for the bundled Homebrew runtimes.
+# Override older cached/environment targets before initializing the toolchain.
+if(CMAKE_HOST_APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version" FORCE)
+endif()
+
 project(VeyloPlayer
     # Release version: update this value manually for each release.
     VERSION 1.0.1

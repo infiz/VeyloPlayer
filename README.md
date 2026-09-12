@@ -152,7 +152,7 @@ pre-commit run --all-files
 
 Prerequisites:
 
-- macOS 12 or newer with Xcode command-line tools.
+- macOS 26 or newer with Xcode command-line tools for the current Homebrew dependencies.
 - CMake, Ninja, Qt 6.8 or newer, and VLC 3. Homebrew users can install them with:
 
 ```bash
@@ -170,6 +170,9 @@ runtimes, sign the bundle ad hoc, and create a verified DMG:
 The app is written to `build/macos/VeyloPlayer.app`, and the installer is
 written to `dist/`. The script automatically detects Homebrew Qt and VLC in
 `/Applications`. Set `QT_ROOT` or `LIBVLC_ROOT` to use another installation.
+VeyloPlayer supports macOS 26 and later. The build enforces a macOS 26.0
+deployment target and records that minimum in the app's Info.plist, overriding
+older cached settings or `MACOSX_DEPLOYMENT_TARGET` environment values.
 Set `CONFIGURATION=Debug PACKAGE=0` for a development build without a DMG, or
 set `CODESIGN_IDENTITY` to sign with a Developer ID identity. Public releases
 still require Apple notarization.
