@@ -44,6 +44,13 @@ license selection depend on the VLC binary archive used for a release.
 - Copyright: VideoLAN and VLC contributors; individual bundled libraries are
   copyright their respective authors.
 - Windows release baseline: official VLC 3.0.23 64-bit archive.
+- The Direct3D 11 output plugin is rebuilt from that version with VeyloPlayer's
+  planar 10-bit 4:2:2 patch. Its original LGPL notices remain in the source.
+  The patch and build recipe are in `scripts/vlc-d3d11/` and are included in
+  Windows packages under `licenses/vlc/build/`.
+- The rebuilt plugin statically links MinGW-w64 and GCC runtime components.
+  Their copyright/license notices and the compiler version used are included
+  under `licenses/vlc/` alongside the build manifest.
 - `libvlc` and `libvlccore`: LGPL-2.1-or-later according to the VLC source.
 - VLC runtime and plugins: licenses vary by file. The official Windows archive
   is distributed with the GPL-2.0 text, so VeyloPlayer release engineering

@@ -1,0 +1,22 @@
+--- a/modules/video_chroma/dxgi_fmt.c
++++ b/modules/video_chroma/dxgi_fmt.c
+@@ -79,6 +79,7 @@
+ #endif
+     { "I420",     DXGI_FORMAT_UNKNOWN,        VLC_CODEC_I420,          8, 2, 2, { DXGI_FORMAT_R8_UNORM,      DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_R8_UNORM } },
+     { "I420_10",  DXGI_FORMAT_UNKNOWN,        VLC_CODEC_I420_10L,     10, 2, 2, { DXGI_FORMAT_R16_UNORM,     DXGI_FORMAT_R16_UNORM, DXGI_FORMAT_R16_UNORM } },
++    { "I422_10",  DXGI_FORMAT_UNKNOWN,        VLC_CODEC_I422_10L,     10, 2, 1, { DXGI_FORMAT_R16_UNORM,     DXGI_FORMAT_R16_UNORM, DXGI_FORMAT_R16_UNORM } },
+     { "YUVA",     DXGI_FORMAT_UNKNOWN,        VLC_CODEC_YUVA,          8, 1, 1, { DXGI_FORMAT_R8_UNORM,      DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_R8_UNORM } },
+     { "B8G8R8A8", DXGI_FORMAT_B8G8R8A8_UNORM, VLC_CODEC_BGRA,          8, 1, 1, { DXGI_FORMAT_B8G8R8A8_UNORM } },
+     { "VA_BGRA",  DXGI_FORMAT_B8G8R8A8_UNORM, VLC_CODEC_D3D11_OPAQUE,  8, 1, 1, { DXGI_FORMAT_B8G8R8A8_UNORM } },
+--- a/modules/video_output/win32/d3d11_shaders.c
++++ b/modules/video_output/win32/d3d11_shaders.c
+@@ -251,7 +251,8 @@
+                 "sample = shaderTexture[0].Sample(samplerState, coords);";
+         break;
+     case DXGI_FORMAT_UNKNOWN:
+-        if (format->fourcc == VLC_CODEC_I420_10L)
++        if (format->fourcc == VLC_CODEC_I420_10L
++            || format->fourcc == VLC_CODEC_I422_10L)
+             psz_sampler =
+                    "sample.x  = shaderTexture[0].Sample(samplerState, coords).x * 64;\n"
+                     "sample.y  = shaderTexture[1].Sample(samplerState, coords).x * 64;\n"

@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QImageReader>
 #include <QLocale>
+#include <QLibrary>
 #include <QMetaObject>
 #include <QRegularExpression>
 #include <QSettings>
@@ -27,6 +28,38 @@
 #include <utility>
 
 namespace {
+
+#if defined(Q_OS_WIN)
+// LibVLC 3.0.23's public set_hwnd() resets vout to automatic selection, and
+// media options do not reach the player's output resource. This narrow bridge
+// restores the preference after attaching the HWND. Recheck against upstream
+// lib/media_player.c and include/vlc_variables.h when updating the VLC runtime.
+// Never use this private ABI with an unverified runtime or a 32-bit build.
+bool preferWindowsVideoOutput(libvlc_media_player_t *player)
+{
+    if (sizeof(void *) != 8
+        || !QByteArray(libvlc_get_version()).startsWith("3.0.23 ")) return false;
+    // VLC 3's vlc_value_t is an eight-byte union; string values are copied by
+    // var_SetChecked. No VLC object layout or private fields are accessed.
+    union VlcValue {
+        qint64 integer;
+        const char *string;
+    };
+    static_assert(sizeof(VlcValue) == 8);
+    using SetChecked = int (*)(void *, const char *, int, VlcValue);
+    static const auto setChecked = [] {
+        QLibrary core(QDir(QCoreApplication::applicationDirPath())
+                          .filePath(QStringLiteral("libvlccore.dll")));
+        core.setLoadHints(QLibrary::PreventUnloadHint);
+        return reinterpret_cast<SetChecked>(core.resolve("var_SetChecked"));
+    }();
+    if (!setChecked) return false;
+    constexpr int vlcString = 0x0040;
+    VlcValue value{};
+    value.string = "direct3d11";
+    return setChecked(player, "vout", vlcString, value) == 0;
+}
+#endif
 
 struct TrackMetadata {
     int id = -1;
@@ -315,6 +348,15 @@ bool PlayerController::ensureMediaEngine()
         return true;
     }
 
+#if defined(Q_OS_WIN)
+    const QString rendererPath = QDir(QCoreApplication::applicationDirPath())
+        .filePath(QStringLiteral("plugins/video_output/libdirect3d11_plugin.dll"));
+    if (!QFileInfo::exists(rendererPath)) {
+        setError(tr("The Direct3D 11 video component is missing. Please reinstall VeyloPlayer."));
+        return false;
+    }
+#endif
+
 #if defined(Q_OS_MACOS)
     const QString bundledPluginPath = QDir(QCoreApplication::applicationDirPath())
                                           .filePath(QStringLiteral("plugins"));
@@ -326,9 +368,9 @@ bool PlayerController::ensureMediaEngine()
     const char *arguments[] = {
         "--no-video-title-show", "--quiet",
 #if defined(Q_OS_WIN)
-        // Prefer hardware decoding for supported codecs. Recreate the player
-        // after device loss so it cannot retain the previous driver's devices.
-        "--avcodec-hw=any", "--vout=direct3d11",
+        // Keep hardware decoding enabled for supported profiles. The output
+        // preference is restored after set_hwnd resets the player's vout.
+        "--avcodec-hw=any",
 #endif
     };
     if (!vlcInstance_)
@@ -1370,6 +1412,12 @@ void PlayerController::attachVideoOutput()
     const WId handle = videoSurface_->winId();
 #if defined(Q_OS_WIN)
     libvlc_media_player_set_hwnd(mediaPlayer_, reinterpret_cast<void *>(handle));
+    // The bundled Direct3D 11 plugin uploads planar 10-bit 4:2:2 directly,
+    // avoiding the stock plugin's slow CPU conversion to RGBA64. Reapply the
+    // output choice when graphics recovery recreates the player as well.
+    if (!preferWindowsVideoOutput(mediaPlayer_)) {
+        qWarning("Could not select the preferred VLC renderer; using automatic video output.");
+    }
 #elif defined(Q_OS_MACOS)
     libvlc_media_player_set_nsobject(mediaPlayer_, reinterpret_cast<void *>(handle));
 #else

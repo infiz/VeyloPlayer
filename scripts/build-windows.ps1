@@ -60,6 +60,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $vlcRoot "sdk\include\vlc\vlc.h"))) 
 
 $msvcRuntimeDirectory = Get-MsvcRuntimeDirectory
 
+& (Join-Path $PSScriptRoot "build-vlc-d3d11.ps1") -VlcVersion $VlcVersion
+
 $vlcCacheGenerator = Join-Path $vlcRoot "vlc-cache-gen.exe"
 $vlcPluginsDirectory = Join-Path $vlcRoot "plugins"
 if (-not (Test-Path -LiteralPath $vlcCacheGenerator)) {
