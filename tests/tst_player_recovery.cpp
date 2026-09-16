@@ -1,8 +1,11 @@
 #include "PlayerController.h"
 
 #include <QDataStream>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QGuiApplication>
+#include <QScreen>
+#include <QPixmap>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QTest>
@@ -51,6 +54,7 @@ class PlayerRecoveryTests final : public QObject
 private slots:
     void seekingWhilePausedKeepsSelectedPosition();
     void resumesAndPreservesPauseAndStop();
+    void localVideoKeepsUp();
 };
 
 void PlayerRecoveryTests::seekingWhilePausedKeepsSelectedPosition()
@@ -153,6 +157,112 @@ void PlayerRecoveryTests::resumesAndPreservesPauseAndStop()
     QVERIFY(!player.loading());
     player.playPause();
     QTRY_VERIFY_WITH_TIMEOUT(player.playing(), 10000);
+}
+
+void PlayerRecoveryTests::localVideoKeepsUp()
+{
+    const QString path = qEnvironmentVariable("VEYLO_PLAYBACK_TEST_FILE");
+    if (path.isEmpty()) {
+        QSKIP("Set VEYLO_PLAYBACK_TEST_FILE to a local video of at least 7 seconds.");
+    }
+    struct OutputDiagnostics {
+        std::atomic_bool direct3d11{false};
+        std::atomic_bool planar422{false};
+        std::atomic_bool rgba64{false};
+        bool verbose = qEnvironmentVariableIsSet("VEYLO_PLAYBACK_TEST_LOG");
+    } diagnostics;
+    PlayerController player;
+    player.videoWindow()->resize(1280, 720);
+    player.videoWindow()->show();
+    QVERIFY(player.ensureMediaEngine());
+    libvlc_log_set(player.vlcInstance_, [](void *opaque, int, const libvlc_log_t *,
+                                          const char *format, va_list arguments) {
+        auto &output = *static_cast<OutputDiagnostics *>(opaque);
+        const QString message = QString::vasprintf(format, arguments);
+        if (message.contains(QStringLiteral("using vout display module \"direct3d11\"")))
+            output.direct3d11 = true;
+        if (message.contains(QStringLiteral("Using pixel format I422_10")))
+            output.planar422 = true;
+        if (message.contains(QStringLiteral("Using pixel format RGBA64")))
+            output.rgba64 = true;
+        if (output.verbose) qInfo().noquote() << message;
+    }, &diagnostics);
+    QVERIFY(player.openFile(path));
+    QTRY_VERIFY_WITH_TIMEOUT(player.position() > 500 && player.seekable(), 10000);
+    QVERIFY(player.duration() >= 7000);
+
+    auto media = std::unique_ptr<libvlc_media_t, decltype(&libvlc_media_release)>(
+        libvlc_media_player_get_media(player.mediaPlayer_), &libvlc_media_release);
+    QVERIFY(media);
+    libvlc_media_track_t **tracks = nullptr;
+    const unsigned count = libvlc_media_tracks_get(media.get(), &tracks);
+    double fps = 0;
+    for (unsigned index = 0; index < count; ++index) {
+        if (tracks[index]->i_type == libvlc_track_video
+            && tracks[index]->video->i_frame_rate_den > 0) {
+            fps = double(tracks[index]->video->i_frame_rate_num)
+                / tracks[index]->video->i_frame_rate_den;
+            break;
+        }
+    }
+    libvlc_media_tracks_release(tracks, count);
+    QVERIFY(fps > 0);
+
+    for (const bool fullscreen : {false, true}) {
+        if (fullscreen) {
+            player.videoWindow()->showFullScreen();
+            diagnostics.direct3d11 = false;
+            diagnostics.planar422 = false;
+            diagnostics.rgba64 = false;
+            QVERIFY(player.openFile(path));
+            media.reset(libvlc_media_player_get_media(player.mediaPlayer_));
+            QVERIFY(media);
+        }
+        // Measure uninterrupted playback after startup. Exercise seeking
+        // separately so preroll does not skew the sustained delivery counters.
+        QTRY_VERIFY_WITH_TIMEOUT(player.playing() && player.position() >= 2500, 10000);
+        QTest::qWait(500);
+        libvlc_media_stats_t before{}, after{};
+        QVERIFY(libvlc_media_get_stats(media.get(), &before));
+        QElapsedTimer elapsed;
+        elapsed.start();
+        QTest::qWait(3000);
+        const double seconds = elapsed.elapsed() / 1000.0;
+        QVERIFY(libvlc_media_get_stats(media.get(), &after));
+        const int displayed = after.i_displayed_pictures - before.i_displayed_pictures;
+        const int lost = after.i_lost_pictures - before.i_lost_pictures;
+        qInfo() << path << (fullscreen ? "fullscreen" : "windowed")
+                << "displayed" << displayed << "lost" << lost << "seconds" << seconds;
+        // LibVLC publishes counters periodically; allow sampling jitter, but
+        // reject the sustained ~17 fps / heavy loss of the RGBA64 path.
+        QVERIFY(displayed >= fps * seconds * 0.8);
+        QVERIFY(lost <= (displayed + lost) * 0.02);
+        QVERIFY(player.errorMessage().isEmpty());
+        QVERIFY(diagnostics.direct3d11.load());
+        if (qEnvironmentVariableIsSet("VEYLO_PLAYBACK_TEST_EXPECT_PLANAR422")) {
+            QVERIFY(diagnostics.planar422.load());
+            QVERIFY(!diagnostics.rgba64.load());
+        }
+        player.pause();
+        QTRY_VERIFY(!player.playing());
+        const QString snapshot = qEnvironmentVariable("VEYLO_PLAYBACK_TEST_SCREENSHOT");
+        if (!fullscreen && !snapshot.isEmpty()) {
+            // Capture the composited screen: grabbing the native HWND directly
+            // returns black for a Direct3D swap chain.
+            const QPoint origin = player.videoWindow()->mapToGlobal(QPoint(0, 0));
+            const auto capture = player.videoWindow()->screen()->grabWindow(
+                0, origin.x(), origin.y(), player.videoWindow()->width(),
+                player.videoWindow()->height());
+            QVERIFY(!capture.isNull());
+            QVERIFY(capture.save(snapshot));
+        }
+        player.seek(1000);
+        player.play();
+        QTRY_VERIFY_WITH_TIMEOUT(player.playing() && player.position() >= 1500, 10000);
+        player.stop();
+    }
+    player.videoWindow()->showNormal();
+    player.stop();
 }
 
 int main(int argc, char **argv)

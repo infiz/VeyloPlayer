@@ -43,7 +43,16 @@ See [product requirements](docs/requirements.md) and the [technical stack](docs/
 ## Graphics-driver updates on Windows
 
 The Windows player requests GPU video decoding and Direct3D 11 video output.
-Codecs unsupported by the installed GPU can still use LibVLC's software decoder.
+Its bundled VLC 3.0.23 output plugin includes a small source patch that uploads
+planar 10-bit 4:2:2 video directly into three GPU textures. The GPU performs the
+color conversion, avoiding the stock plugin's slow CPU conversion to RGBA64.
+This preserves the source's 10-bit precision and 4:2:2 sampling through upload;
+the final display precision still depends on the monitor and Windows settings.
+Codecs unsupported by the GPU or bundled decoder use LibVLC's software decoder.
+The embedded-output preference uses a small private-API bridge guarded to the
+bundled 64-bit LibVLC 3.0.23 runtime, because its public window-attachment API
+clears the output preference. Revalidate this bridge when upgrading VLC; unknown
+runtimes retain automatic output selection and emit a warning.
 The controls and image viewer use Qt's software renderer so they remain independent
 of the video device during driver replacement.
 
@@ -72,6 +81,18 @@ loss, stale callbacks, position restoration, paused playback, and Stop cancellat
 The core tests cover repeated resets and the hardware settling interval. These
 checks do not replace testing a real driver upgrade on NVIDIA hardware.
 
+To measure sustained frame delivery with a local video (at least seven seconds),
+put `.deps\Qt\6.11.2\msvc2022_64\bin` on `PATH`, set
+`VEYLO_PLAYBACK_TEST_FILE` to its full path, and run
+`build\windows\Release\VeyloPlayerRecoveryTests.exe localVideoKeepsUp -o playback-test.txt,txt`.
+This optional hardware-dependent check verifies Direct3D 11 selection and reports displayed/lost frames in windowed
+and fullscreen playback, including pause/resume and seeking. It is skipped during
+normal test runs when the variable is unset.
+For a 10-bit 4:2:2 fixture, also set `VEYLO_PLAYBACK_TEST_EXPECT_PLANAR422=1` to
+require the direct planar upload and reject an RGBA64 fallback. Set
+`VEYLO_PLAYBACK_TEST_LOG=1` for engine diagnostics or
+`VEYLO_PLAYBACK_TEST_SCREENSHOT` to a PNG path to capture the windowed output.
+
 ## Build on Windows
 
 Prerequisites:
@@ -81,6 +102,10 @@ Prerequisites:
 - CMake 3.28 or newer.
 - Python 3 available through the `py` launcher.
 - Git available on `PATH` for the pinned Qt downloader source revision.
+- WSL Ubuntu 24.04 with Python 3, `patch`, and `g++-mingw-w64-x86-64-posix`
+  to rebuild the patched VLC output plugin on the first build or recipe changes.
+  Install the compiler inside that distribution with
+  `sudo apt-get install g++-mingw-w64-x86-64-posix patch`.
 
 From PowerShell:
 
@@ -90,6 +115,16 @@ From PowerShell:
 ```
 
 The bootstrap script downloads pinned Qt and official VLC artifacts into the ignored `.deps/` directory and verifies the VLC SHA-256 checksum. It does not use a separately installed VLC application.
+The Windows build also runs `scripts/build-vlc-d3d11.ps1`, which verifies the VLC
+source archive, applies `scripts/vlc-d3d11/planar-422.patch`, and rebuilds only the
+Direct3D 11 plugin. Its recipe, compiler version, and output hash are recorded in
+a manifest; unchanged builds reuse the verified plugin. A different WSL
+distribution can prepare it with `build-vlc-d3d11.ps1 -WslDistribution <name>`.
+The patch, build recipe, manifest, and compiler-runtime notices are packaged
+under `licenses/vlc/`. Revalidate this patch before upgrading VLC.
+The plugin's Windows file version includes a patch revision in `plugin.rc`;
+increment that revision for plugin changes so MSI upgrades replace older DLLs.
+The build rejects a plugin without a version newer than the stock VLC DLL.
 
 Run the debug build:
 

@@ -8,7 +8,7 @@ endif()
 
 project(VeyloPlayer
     # Release version: update this value manually for each release.
-    VERSION 1.0.1
+    VERSION 1.0.2
     DESCRIPTION "A modern open-source media player for Windows and macOS"
     LANGUAGES CXX
 )
@@ -241,6 +241,26 @@ if(WIN32)
             DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
 
+    set(_veylo_vlc_patch_manifest "${LIBVLC_RUNTIME_DIR}/veylo-d3d11-build.json")
+    if(NOT EXISTS "${_veylo_vlc_patch_manifest}")
+        message(FATAL_ERROR "Build the patched VLC output with scripts/build-vlc-d3d11.ps1 first")
+    endif()
+    file(READ "${_veylo_vlc_patch_manifest}" _veylo_vlc_patch_json)
+    string(JSON _veylo_expected_plugin_hash GET "${_veylo_vlc_patch_json}" plugin_sha256)
+    file(SHA256 "${LIBVLC_RUNTIME_DIR}/plugins/video_output/libdirect3d11_plugin.dll"
+        _veylo_actual_plugin_hash)
+    if(NOT _veylo_actual_plugin_hash STREQUAL _veylo_expected_plugin_hash)
+        message(FATAL_ERROR "The VLC output plugin does not match its build manifest; run scripts/build-vlc-d3d11.ps1")
+    endif()
+    # Deploy plugin-only changes even when the application does not relink.
+    add_custom_target(VeyloVlcPatchedOutput
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:VeyloPlayer>/plugins/video_output"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${LIBVLC_RUNTIME_DIR}/plugins/video_output/libdirect3d11_plugin.dll"
+            "$<TARGET_FILE_DIR:VeyloPlayer>/plugins/video_output/libdirect3d11_plugin.dll")
+    add_dependencies(VeyloPlayer VeyloVlcPatchedOutput)
+
     add_custom_command(TARGET VeyloPlayer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${LIBVLC_RUNTIME_DIR}/libvlc.dll"
@@ -266,6 +286,13 @@ if(WIN32)
                 DESTINATION licenses/vlc)
         endif()
     endforeach()
+    install(FILES "${_veylo_vlc_patch_manifest}"
+        "${LIBVLC_RUNTIME_DIR}/gcc-mingw-w64-base-copyright.txt"
+        "${LIBVLC_RUNTIME_DIR}/mingw-w64-common-copyright.txt"
+        DESTINATION licenses/vlc)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/scripts/vlc-d3d11"
+        DESTINATION licenses/vlc/build
+        PATTERN "__pycache__" EXCLUDE)
 endif()
 
 qt_generate_deploy_qml_app_script(

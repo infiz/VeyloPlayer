@@ -39,6 +39,13 @@ contain the exact contributed-library sources and build recipes corresponding
 to the official VLC binary archive. A VLC core tarball alone is not necessarily
 the complete corresponding source for the deployed runtime.
 
+The Windows Direct3D 11 plugin additionally requires VeyloPlayer's patch,
+configuration, and build script in `scripts/vlc-d3d11/`. Packages include those
+files and a build manifest recording the exact source checksum, recipe hashes,
+compiler version, and plugin checksum under `licenses/vlc/`. Include the
+corresponding MinGW-w64/GCC runtime sources and notices for the recorded toolchain
+in the release source set as well.
+
 ## Release rule
 
 Do not publish a binary merely because an upstream URL exists. Copy the required
