@@ -1,6 +1,6 @@
 # VeyloPlayer
 
-VeyloPlayer is a modern, open-source desktop player for local video, audio, and JPEG files. The first end-to-end implementation targets Windows while keeping the C++/Qt/LibVLC application core compatible with macOS.
+VeyloPlayer is a modern, open-source desktop player for local video, audio, and image files (JPEG, WebP, PNG, GIF, BMP, TIFF, SVG, and ICO). The first end-to-end implementation targets Windows while keeping the C++/Qt/LibVLC application core compatible with macOS.
 
 VeyloPlayer's original source code is licensed under
 [GPL-3.0-or-later](LICENSE). Contributions are welcome under the same license.
@@ -22,7 +22,7 @@ VeyloPlayer's original source code is licensed under
 - Per-folder audio and embedded-subtitle preferences with label and position matching.
 - External SRT, WebVTT, ASS, and SSA subtitle loading.
 - Natural same-folder continuation (`1`, `2`, `10`, `11`).
-- JPEG viewing with smooth pointer-centered mouse-wheel zoom, click-and-drag
+- Image viewing with smooth pointer-centered mouse-wheel zoom, click-and-drag
   panning, Up/Down repositioning, persistent zoom between photos, an image
   counter, and Left/Right previous/next navigation at every zoom level.
 - Add-media menu with multi-file and recursive-folder pickers, command-line
@@ -43,14 +43,14 @@ See [product requirements](docs/requirements.md) and the [technical stack](docs/
 ## Graphics-driver updates on Windows
 
 The Windows player requests GPU video decoding and Direct3D 11 video output.
-Its bundled VLC 3.0.23 output plugin includes a small source patch that uploads
+Its bundled VLC 3.0.24 output plugin includes a small source patch that uploads
 planar 10-bit 4:2:2 video directly into three GPU textures. The GPU performs the
 color conversion, avoiding the stock plugin's slow CPU conversion to RGBA64.
 This preserves the source's 10-bit precision and 4:2:2 sampling through upload;
 the final display precision still depends on the monitor and Windows settings.
 Codecs unsupported by the GPU or bundled decoder use LibVLC's software decoder.
 The embedded-output preference uses a small private-API bridge guarded to the
-bundled 64-bit LibVLC 3.0.23 runtime, because its public window-attachment API
+bundled 64-bit LibVLC 3.0.24 runtime, because its public window-attachment API
 clears the output preference. Revalidate this bridge when upgrading VLC; unknown
 runtimes retain automatic output selection and emit a warning.
 The controls and image viewer use Qt's software renderer so they remain independent
@@ -73,7 +73,7 @@ interrupted when its device is reinstalled. macOS rendering is unchanged.
 To check a driver upgrade on Windows, play a video, note its position, and update
 the display driver. After the desktop returns, check that video and controls still
 respond, playback advances, seeking works, and pause/resume works. Repeat while
-paused and in fullscreen, and check JPEG viewing as well. A display-mode change
+paused and in fullscreen, and check image viewing as well. A display-mode change
 alone is not equivalent to a driver upgrade.
 
 `VeyloPlayerRecoveryTests` generates a local video and exercises simulated device
@@ -82,7 +82,7 @@ The core tests cover repeated resets and the hardware settling interval. These
 checks do not replace testing a real driver upgrade on NVIDIA hardware.
 
 To measure sustained frame delivery with a local video (at least seven seconds),
-put `.deps\Qt\6.11.2\msvc2022_64\bin` on `PATH`, set
+put `.deps\Qt\6.12.0\msvc2022_64\bin` on `PATH`, set
 `VEYLO_PLAYBACK_TEST_FILE` to its full path, and run
 `build\windows\Release\VeyloPlayerRecoveryTests.exe localVideoKeepsUp -o playback-test.txt,txt`.
 This optional hardware-dependent check verifies Direct3D 11 selection and reports displayed/lost frames in windowed
@@ -188,12 +188,16 @@ pre-commit run --all-files
 Prerequisites:
 
 - macOS 26 or newer with Xcode command-line tools for the current Homebrew dependencies.
-- CMake, Ninja, Qt 6.8 or newer, and VLC 3. Homebrew users can install them with:
+- CMake, Ninja, Python 3, and Git. Install the build tools, then download the pinned Qt 6.12.0 and VLC 3.0.24 runtimes:
 
 ```bash
-brew install cmake ninja qt
-brew install --cask vlc
+brew install cmake ninja python git sevenzip
+bash ./scripts/bootstrap-macos.sh
 ```
+
+The bootstrap stores Qt and the architecture-specific VLC runtime under `.deps`,
+without replacing a system VLC installation. VLC downloads are verified against
+pinned SHA-256 checksums. It supports Apple Silicon and Intel Macs.
 
 Build the Release application, run its tests, deploy private Qt and LibVLC
 runtimes, sign the bundle ad hoc, and create a verified DMG:
@@ -203,8 +207,10 @@ runtimes, sign the bundle ad hoc, and create a verified DMG:
 ```
 
 The app is written to `build/macos/VeyloPlayer.app`, and the installer is
-written to `dist/`. The script automatically detects Homebrew Qt and VLC in
-`/Applications`. Set `QT_ROOT` or `LIBVLC_ROOT` to use another installation.
+written to `dist/`. The script prefers the pinned runtimes installed by the
+bootstrap. Set `QT_ROOT` or `LIBVLC_ROOT` to use another installation of the same
+versions; older versions are rejected. Homebrew Qt and VLC in `/Applications`
+remain fallback locations when they match the pinned versions.
 VeyloPlayer supports macOS 26 and later. The build enforces a macOS 26.0
 deployment target and records that minimum in the app's Info.plist, overriding
 older cached settings or `MACOSX_DEPLOYMENT_TARGET` environment values.
@@ -230,7 +236,7 @@ success alone is not a distribution approval.
 
 ## Verification status
 
-The Windows MVP has been built and exercised end to end with JPEG navigation,
+The Windows MVP has been built and exercised end to end with image navigation,
 video rendering, embedded track selection, external subtitles, automatic
 same-folder continuation, and recursive folder discovery. Core natural-sort and folder-sequence tests run during
 every build. The self-contained Apple silicon macOS app and DMG build have been

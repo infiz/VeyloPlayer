@@ -30,7 +30,7 @@
 namespace {
 
 #if defined(Q_OS_WIN)
-// LibVLC 3.0.23's public set_hwnd() resets vout to automatic selection, and
+// LibVLC 3.0.24's public set_hwnd() resets vout to automatic selection, and
 // media options do not reach the player's output resource. This narrow bridge
 // restores the preference after attaching the HWND. Recheck against upstream
 // lib/media_player.c and include/vlc_variables.h when updating the VLC runtime.
@@ -38,7 +38,7 @@ namespace {
 bool preferWindowsVideoOutput(libvlc_media_player_t *player)
 {
     if (sizeof(void *) != 8
-        || !QByteArray(libvlc_get_version()).startsWith("3.0.23 ")) return false;
+        || !QByteArray(libvlc_get_version()).startsWith("3.0.24 ")) return false;
     // VLC 3's vlc_value_t is an eight-byte union; string values are copied by
     // var_SetChecked. No VLC object layout or private fields are accessed.
     union VlcValue {

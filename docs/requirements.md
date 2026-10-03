@@ -2,14 +2,14 @@
 
 ## 1. Purpose
 
-VeyloPlayer is a desktop media player for Windows and macOS. It provides a simple way to open and play local audio files, video files, and JPEG images, including files opened directly from the operating system.
+VeyloPlayer is a desktop media player for Windows and macOS. It provides a simple way to open and play local audio files, video files, and images, including files opened directly from the operating system.
 
 This document defines the minimum viable product (MVP). Technology choices and detailed visual design are intentionally left to the implementation phase.
 
 ## 2. Product goals
 
 - Play common local audio and video files reliably.
-- Display JPEG images and support keyboard-based browsing.
+- Display images and support keyboard-based browsing.
 - Integrate with Windows and macOS as an available handler for supported file types.
 - Let users choose embedded audio and subtitle tracks and load external subtitles.
 - Continue through playable files in the current folder using human-friendly filename ordering.
@@ -46,7 +46,7 @@ The initial release must support these categories:
 | --- | --- | --- |
 | Audio | `.mp3`, `.m4a`, `.aac`, `.wav`, `.flac`, `.ogg` | Play audio and expose basic transport controls. |
 | Video | `.mp4`, `.m4v`, `.mov`, `.mkv`, `.webm`, `.avi` | Play video and expose track, subtitle, and transport controls. |
-| Image | `.jpg`, `.jpeg` | Display the image and enable previous/next image navigation. |
+| Image | `.jpg`, `.jpeg`, `.webp`, `.png`, `.gif`, `.bmp`, `.tif`, `.tiff`, `.svg`, `.ico` | Display the image and enable previous/next image navigation. |
 | External subtitle | `.srt`, `.vtt`, `.ass`, `.ssa` | Load as a subtitle track through the selected playback engine. |
 
 Actual codec availability may depend on the bundled playback engine and platform licensing. Unsupported or corrupt content must produce a clear, non-destructive error instead of crashing or hanging the application.
@@ -103,21 +103,21 @@ Actual codec availability may depend on the bundled playback engine and platform
 - **FR-036:** If a candidate next file cannot be played, VeyloPlayer reports or records the failure and attempts the next playable candidate without entering an infinite loop.
 - **FR-037:** Manually opening a file establishes that file's containing folder as the new sequence context.
 - **FR-038:** Filename ordering is deterministic when names compare equally after case folding and numeric comparison.
-- **FR-039:** Dropping a folder onto VeyloPlayer recursively discovers supported files in that folder and its visible subfolders. Audio and video files are played continuously in natural relative-path order. If no audio or video files are present, the first JPEG is displayed and Left/Right Arrow navigation traverses the recursively discovered JPEGs. Dropping a new file or folder replaces the recursive queue context.
+- **FR-039:** Dropping a folder onto VeyloPlayer recursively discovers supported files in that folder and its visible subfolders. Audio and video files are played continuously in natural relative-path order. If no audio or video files are present, the first image is displayed and Left/Right Arrow navigation traverses the recursively discovered images. Dropping a new file or folder replaces the recursive queue context.
 - **FR-039A:** While audio or video is open, Previous and Next controls navigate the supported audio/video sequence using the same natural order and recursive queue rules as automatic continuation. Each control is disabled when its direction has no item.
 
-### 5.5 JPEG viewing and navigation
+### 5.5 Image viewing and navigation
 
-- **FR-040:** Opening a `.jpg` or `.jpeg` file displays it fitted within the available window while preserving its aspect ratio.
-- **FR-041:** Pressing the Right Arrow key displays the next JPEG in the same folder using the natural ordering defined in FR-031, regardless of the current zoom level.
-- **FR-042:** Pressing the Left Arrow key displays the previous JPEG in the same folder using the natural ordering defined in FR-031, regardless of the current zoom level.
+- **FR-040:** Opening a supported image file displays it fitted within the available window while preserving its aspect ratio. Supported formats are JPEG, WebP, PNG, GIF, BMP, TIFF, SVG, and ICO. Animated and multipage images display the first frame or page.
+- **FR-041:** Pressing the Right Arrow key displays the next image in the same folder using the natural ordering defined in FR-031, regardless of the current zoom level.
+- **FR-042:** Pressing the Left Arrow key displays the previous image in the same folder using the natural ordering defined in FR-031, regardless of the current zoom level.
 - **FR-043:** Image navigation does not wrap at the first or last image. The unavailable direction is disabled or has no effect.
-- **FR-044:** Image navigation includes only `.jpg` and `.jpeg` files, is case-insensitive, and does not search subfolders.
+- **FR-044:** Image navigation includes only JPEG, WebP, PNG, GIF, BMP, TIFF, SVG, and ICO files, is case-insensitive, and does not search subfolders.
 - **FR-045:** Audio/video autoplay is not triggered while navigating images.
 - **FR-046:** Keyboard image navigation works whenever the main player window has focus, except while a text-entry or menu control is consuming the key.
-- **FR-047:** Scrolling the mouse wheel over a JPEG zooms smoothly in or out around the pointer location, from the fitted view up to 800%, without blanking the viewport while the zoom changes. The selected zoom level carries over when navigating to the previous or next image.
-- **FR-048:** While a JPEG is zoomed, dragging it with the primary mouse button repositions it within the viewport without exposing space beyond its usable image bounds.
-- **FR-049:** While a JPEG is zoomed, the Up and Down Arrow keys reposition it vertically. Left and Right always navigate to the previous or next image. Each newly displayed image starts centered at the retained zoom level, and the viewer displays its one-based index and the total number of images in the active folder or recursive image queue.
+- **FR-047:** Scrolling the mouse wheel over a image zooms smoothly in or out around the pointer location, from the fitted view up to 800%, without blanking the viewport while the zoom changes. The selected zoom level carries over when navigating to the previous or next image and when returning to photos after other media; only Reset or a double-click returns it to the fitted view.
+- **FR-048:** While a image is zoomed, dragging it with the primary mouse button repositions it within the viewport without exposing space beyond its usable image bounds.
+- **FR-049:** While a image is zoomed, the Up and Down Arrow keys reposition it vertically. Left and Right always navigate to the previous or next image. Each newly displayed image starts centered at the retained zoom level, and the viewer displays its one-based index and the total number of images in the active folder or recursive image queue.
 - **FR-049A:** While a video is open and seekable, pressing Left Arrow seeks backward five seconds and pressing Right Arrow seeks forward five seconds. Seeking is clamped at the beginning and end of the video and works in both windowed and fullscreen modes.
 
 ### 5.6 File-type registration
@@ -213,7 +213,7 @@ Actual codec availability may depend on the bundled playback engine and platform
 8. **End of folder:** Finishing the last audio/video item stops playback without restarting the first item.
 9. **Packaging:** A clean Windows build produces an installable signed package, and a clean macOS build produces a signed and notarized DMG using only documented prerequisites and scripts under `scripts/`.
 10. **Recursive folder drop:** Given nested folders containing `1.mp4`, `Season2/episode2.mp3`, `Season2/episode10.mkv`, and `Season10/episode1.mp4`, dropping the root folder plays them in that natural relative-path order and stops after the final item.
-11. **Recursive photo folder:** Given a folder tree containing JPEGs but no audio or video, dropping the root folder displays the first JPEG and Left/Right Arrow navigates all nested JPEGs in natural relative-path order without wrapping.
+11. **Recursive photo folder:** Given a folder tree containing images but no audio or video, dropping the root folder displays the first image and Left/Right Arrow navigates all nested images in natural relative-path order without wrapping.
 12. **Continue watching:** Given a video stopped at 12:34, closing and reopening VeyloPlayer without another file request presents a Continue watching action; choosing it opens the same video near 12:34.
 13. **Fullscreen:** While video is open, the fullscreen button, `F`, `F11`, and video double-click enter fullscreen, while `Escape` and the exit-fullscreen button restore the normal window.
 14. **Playback-bar activity:** With audio or video open, moving the pointer over any part of the media reveals the bottom playback bar; leaving the pointer inactive for five seconds hides it.
@@ -235,7 +235,7 @@ Actual codec availability may depend on the bundled playback engine and platform
 - DRM-protected media.
 - Media-library indexing or metadata management.
 - User-created playlists, shuffle, repeat, or timed image slideshows.
-- Image editing, slideshow timing, or non-JPEG image formats.
+- Image editing, slideshow timing, or unsupported image formats.
 - Video editing, transcoding, downloading, or screen capture.
 - Mobile, Linux, browser, or television versions.
 - Automatic software updates, unless separately specified before implementation.
@@ -249,5 +249,5 @@ The following product and distribution decisions remain:
 - Intel macOS support versus Apple-silicon-only support.
 - Whether an additional portable Windows build is desired.
 - Product identity: application icon, bundle identifier, publisher name, and signing identities.
-- Whether image formats beyond JPEG, playlist features, repeat behavior, or playback-speed controls belong in the first release.
+- Whether image formats beyond image, playlist features, repeat behavior, or playback-speed controls belong in the first release.
 - Minimum supported external subtitle encodings and styling behavior.

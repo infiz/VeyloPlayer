@@ -26,7 +26,8 @@ const QSet<QString> &videoExtensionSet()
 const QSet<QString> &imageExtensionSet()
 {
     static const QSet<QString> extensions = {
-        QStringLiteral("jpg"), QStringLiteral("jpeg"),
+        QStringLiteral("jpg"), QStringLiteral("jpeg"), QStringLiteral("webp"),
+        QStringLiteral("png"), QStringLiteral("gif"), QStringLiteral("bmp"), QStringLiteral("tif"), QStringLiteral("tiff"), QStringLiteral("svg"), QStringLiteral("ico"),
     };
     return extensions;
 }

@@ -2,7 +2,7 @@
 
 ## 1. Decision summary
 
-VeyloPlayer will be an open-source native C++20 desktop application using Qt Quick/QML for its user interface and LibVLC 3 for audio/video playback. Qt will handle JPEG decoding, filesystem access, settings, localization, and platform integration. LibVLC will own the complete media pipeline, including demuxing, decoding, hardware acceleration, audio output, embedded tracks, and external subtitles.
+VeyloPlayer will be an open-source native C++20 desktop application using Qt Quick/QML for its user interface and LibVLC 3 for audio/video playback. Qt will handle image decoding, filesystem access, settings, localization, and platform integration. LibVLC will own the complete media pipeline, including demuxing, decoding, hardware acceleration, audio output, embedded tracks, and external subtitles.
 
 | Area | Selected technology | Responsibility |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ VeyloPlayer will be an open-source native C++20 desktop application using Qt Qui
 | Media engine | LibVLC 3 stable | Audio/video demuxing, decoding, rendering, seeking, tracks, and subtitles |
 | Video rendering | LibVLC native video output | Render into an `HWND` on Windows and an `NSView` on macOS |
 | Audio output | LibVLC audio outputs | WASAPI on Windows and Core Audio on macOS |
-| Image decoding | Qt GUI `QImageReader` | JPEG validation, EXIF orientation, scaled decoding, and error reporting |
+| Image decoding | Qt GUI `QImageReader` | image validation, EXIF orientation, scaled decoding, and error reporting |
 | Subtitles | LibVLC subtitle pipeline | Embedded and external `.srt`, `.vtt`, `.ass`, and `.ssa` subtitles |
 | Build system | CMake and Ninja | Configure, compile, test, install, and package |
 | Unit/UI tests | Qt Test, Qt Quick Test, and CTest | Core logic, QML components, signals, keyboard behavior, and integration tests |
@@ -20,13 +20,16 @@ VeyloPlayer will be an open-source native C++20 desktop application using Qt Qui
 | Settings | `QSettings` | Platform-native per-user preferences |
 | Logging | `QLoggingCategory` | Structured application and playback diagnostics |
 
-Current Windows baseline: Qt 6.11.2, LibVLC 3.0.23, WiX 5.0.2, C++20, CMake 3.28 or newer, and MSVC 2022. macOS uses Apple Clang from a supported Xcode release. LibVLC remains on the stable version 3 line until version 4 is officially stable and a deliberate migration is approved. Every dependency must be pinned to an exact version in the build configuration; release scripts must not download an unpinned `latest` artifact.
+Current Windows and macOS baseline: Qt 6.12.0, LibVLC 3.0.24, WiX 5.0.2, C++20, CMake 3.28 or newer, and MSVC 2022. macOS uses Apple Clang from a supported Xcode release and the pinned
+`bootstrap-macos.sh` dependencies for Apple Silicon or Intel. LibVLC remains on the stable version 3 line until version 4 is officially stable and a deliberate migration is approved. Every dependency must be pinned to an exact version in the build configuration; release scripts must not download an unpinned `latest` artifact.
 
 The Windows bootstrap pins aqtinstall to upstream commit
 `8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b` (3.3.1.dev92), the merged
-[Qt 6.11 repository-layout fix](https://github.com/miurahr/aqtinstall/pull/1000).
+[Qt Windows repository-layout fix](https://github.com/miurahr/aqtinstall/pull/1000).
 The latest published release, 3.3.0, does not support that layout. Replace this
-source pin with a stable release once it includes the fix. WiX 6/7 are deferred
+source pin with a stable release once it includes the fix. Qt archives are
+extracted using the checksum-pinned standalone 7-Zip 26.03 executable because
+the Python extractor cannot reliably handle their links. WiX 6/7 are deferred
 because they introduce maintenance-fee/EULA requirements; WiX 5.0.2 is the
 latest release before those changes. CPack's WiX generator remains in version-4
 mode, which also supports the compatible WiX 5 command line and XML schema.
@@ -153,16 +156,16 @@ Do not add `libass` directly in the MVP. LibVLC may use it internally for styled
 
 ## 7. Image architecture
 
-JPEG display uses `QImageReader`, `QImage`, and `QPixmap`; no separate image library is needed.
+Image display uses `QImageReader`, `QImage`, and `QPixmap`; no separate image library is needed.
 
 - Enable `QImageReader::setAutoTransform(true)` so EXIF orientation is applied.
 - Use scaled decoding when supported to avoid allocating unnecessarily large full-resolution images for small windows.
 - Preserve aspect ratio and use smooth display transforms.
 - Keep a bounded cache containing only the current image and, when useful, one neighboring image in each direction.
 - Keep Qt's image allocation limit enabled and treat oversized or malformed images as recoverable errors.
-- File navigation is based on `.jpg` and `.jpeg` suffixes case-insensitively, but the decoder validates actual content.
+- File navigation is based on supported image filename suffixes case-insensitively, but the decoder validates actual content.
 
-Qt's JPEG image plugin/runtime dependency must be included by the platform deployment step.
+Qt's JPEG, WebP, GIF, TIFF, SVG, and ICO image plugins (including the Qt Image Formats module) must be included by the platform deployment step.
 
 ## 8. Application architecture
 

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$QtVersion = "6.11.2",
-    [string]$VlcVersion = "3.0.23",
+    [string]$QtVersion = "6.12.0",
+    [string]$VlcVersion = "3.0.24",
     [string]$WixVersion = "5.0.2"
 )
 
@@ -27,7 +27,8 @@ if (-not $visualStudio -and -not $compiler) {
 }
 
 $qtInstall = Join-Path $qtDirectory "$QtVersion\msvc2022_64"
-if (-not (Test-Path -LiteralPath (Join-Path $qtInstall "bin\qtpaths.exe"))) {
+if (-not (Test-Path -LiteralPath (Join-Path $qtInstall "bin\qtpaths.exe")) `
+    -or -not (Test-Path -LiteralPath (Join-Path $qtInstall "plugins\imageformats\qwebp.dll"))) {
     if (-not (Test-Path -LiteralPath (Join-Path $pythonEnvironment "Scripts\python.exe"))) {
         & py -m venv $pythonEnvironment
     }
@@ -37,9 +38,21 @@ if (-not (Test-Path -LiteralPath (Join-Path $qtInstall "bin\qtpaths.exe"))) {
     & $bootstrapPython -m pip install --disable-pip-version-check `
         "aqtinstall @ git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b"
     if ($LASTEXITCODE -ne 0) { throw "Installing the Qt downloader failed." }
+    # Qt 6.12 archives contain links that py7zr cannot reliably extract.
+    # Use a pinned standalone 7-Zip extractor for reproducible fresh installs.
+    $qtExtractor = Join-Path $downloadsDirectory "7zr-26.03.exe"
+    if (-not (Test-Path -LiteralPath $qtExtractor)) {
+        Invoke-WebRequest -Uri "https://github.com/ip7z/7zip/releases/download/26.03/7zr.exe" `
+            -OutFile $qtExtractor
+    }
+    $extractorHash = (Get-FileHash -LiteralPath $qtExtractor -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($extractorHash -ne "ad4c82fadcbdf93c03b4fc440f300509c7d60c5c2f4d183e35d9d70d6957037d") {
+        throw "The Qt archive extractor checksum does not match."
+    }
     & $bootstrapPython -m aqt install-qt windows desktop $QtVersion win64_msvc2022_64 `
         --outputdir $qtDirectory `
-        --modules qtshadertools
+        --modules qtshadertools qtimageformats `
+        --external $qtExtractor
     if ($LASTEXITCODE -ne 0) {
         throw "Qt installation failed."
     }
@@ -49,11 +62,11 @@ $vlcArchive = Join-Path $downloadsDirectory "vlc-$VlcVersion-win64.zip"
 $vlcSourceArchive = Join-Path $downloadsDirectory "vlc-$VlcVersion.tar.xz"
 $vlcSourceDirectory = Join-Path $dependenciesDirectory "vlc-source-$VlcVersion"
 $expectedVlcSha256 = switch ($VlcVersion) {
-    "3.0.23" { "992d19dbd0b8a7cde9167d2f7780b1ef6f92acc8a71acfa736101a21f35181e1" }
+    "3.0.24" { "fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323" }
     default { throw "No trusted checksum is configured for VLC $VlcVersion." }
 }
 $expectedVlcSourceSha256 = switch ($VlcVersion) {
-    "3.0.23" { "e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0" }
+    "3.0.24" { "e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf" }
     default { throw "No trusted source checksum is configured for VLC $VlcVersion." }
 }
 

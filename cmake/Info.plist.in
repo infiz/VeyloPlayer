@@ -56,15 +56,15 @@
         </dict>
         <dict>
             <key>CFBundleTypeName</key>
-            <string>JPEG image</string>
+            <string>Image</string>
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
             <string>Alternate</string>
             <key>LSItemContentTypes</key>
-            <array><string>public.jpeg</string></array>
+            <array><string>public.jpeg</string><string>org.webmproject.webp</string><string>public.png</string><string>com.compuserve.gif</string><string>com.microsoft.bmp</string><string>public.tiff</string><string>public.svg-image</string><string>com.microsoft.ico</string></array>
             <key>CFBundleTypeExtensions</key>
-            <array><string>jpg</string><string>jpeg</string></array>
+            <array><string>jpg</string><string>jpeg</string><string>webp</string><string>png</string><string>gif</string><string>bmp</string><string>tif</string><string>tiff</string><string>svg</string><string>ico</string></array>
         </dict>
     </array>
 </dict>

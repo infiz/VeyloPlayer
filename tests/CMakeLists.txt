@@ -10,10 +10,10 @@ qt_add_executable(VeyloCoreTests
 )
 
 target_include_directories(VeyloCoreTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
-target_link_libraries(VeyloCoreTests PRIVATE Qt6::Core Qt6::Test)
+target_link_libraries(VeyloCoreTests PRIVATE Qt6::Core Qt6::Gui Qt6::Test)
 
 if(MSVC)
-    target_compile_options(VeyloCoreTests PRIVATE /W4 /permissive- /utf-8)
+    target_compile_options(VeyloCoreTests PRIVATE /W4 /permissive- /utf-8 /wd4702)
 else()
     target_compile_options(VeyloCoreTests PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -36,6 +36,9 @@ if(WIN32)
     target_include_directories(VeyloPlayerRecoveryTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
     target_link_libraries(VeyloPlayerRecoveryTests PRIVATE
         Qt6::Core Qt6::Gui Qt6::Test LibVLC::LibVLC d3d11 dxgi)
+    if(MSVC)
+        target_compile_options(VeyloPlayerRecoveryTests PRIVATE /wd4702)
+    endif()
     add_test(NAME VeyloPlayerRecoveryTests COMMAND VeyloPlayerRecoveryTests)
     set_tests_properties(VeyloPlayerRecoveryTests PROPERTIES TIMEOUT 90)
 endif()

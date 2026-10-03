@@ -4,8 +4,8 @@ param(
     [string]$Configuration = "Debug",
     [switch]$Bootstrap,
     [switch]$Package,
-    [string]$QtVersion = "6.11.2",
-    [string]$VlcVersion = "3.0.23",
+    [string]$QtVersion = "6.12.0",
+    [string]$VlcVersion = "3.0.24",
     [string]$WixVersion = "5.0.2"
 )
 
@@ -81,6 +81,7 @@ New-Item -ItemType Directory -Force -Path $buildDirectory | Out-Null
 & cmake -S $repositoryRoot -B $buildDirectory `
     -G "Visual Studio 17 2022" -A x64 `
     -U "Qt6*_DIR" -U "QT_DIR" -U "WINDEPLOYQT_EXECUTABLE" `
+    -U "LIBVLC_INCLUDE_DIR" -U "LIBVLC_LIBRARY" -U "LIBVLC_RUNTIME_DIR" `
     "-DCMAKE_PREFIX_PATH=$qtRoot" `
     "-DLIBVLC_ROOT=$vlcRoot" `
     "-DVEYLO_MSVC_RUNTIME_DIR=$msvcRuntimeDirectory" `
@@ -102,6 +103,17 @@ $deployArguments = @(
 )
 & (Join-Path $qtRoot "bin\windeployqt.exe") @deployArguments
 if ($LASTEXITCODE -ne 0) { throw "Qt runtime deployment failed." }
+
+$deployedVlcVersion = (Get-Item -LiteralPath (Join-Path $buildDirectory "$Configuration\libvlc.dll")).VersionInfo.FileVersion
+if ([version]$deployedVlcVersion -ne [version]$VlcVersion) {
+    throw "The deployed LibVLC runtime version does not match $VlcVersion."
+}
+
+# The application deployment does not include Qt Test. Refresh it alongside
+# the tests so upgrading Qt cannot leave an older test runtime in this folder.
+$qtTestLibrary = if ($Configuration -eq "Debug") { "Qt6Testd.dll" } else { "Qt6Test.dll" }
+Copy-Item -LiteralPath (Join-Path $qtRoot "bin\$qtTestLibrary") `
+    -Destination (Join-Path $buildDirectory "$Configuration\$qtTestLibrary") -Force
 
 & ctest --test-dir $buildDirectory -C $Configuration --output-on-failure
 if ($LASTEXITCODE -ne 0) { throw "Tests failed." }

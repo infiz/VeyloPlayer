@@ -1,11 +1,11 @@
 [CmdletBinding()]
 param(
-    [string]$VlcVersion = "3.0.23",
+    [string]$VlcVersion = "3.0.24",
     [string]$WslDistribution = "Ubuntu-24.04"
 )
 
 $ErrorActionPreference = "Stop"
-if ($VlcVersion -ne "3.0.23") { throw "The Direct3D 11 patch requires VLC 3.0.23." }
+if ($VlcVersion -ne "3.0.24") { throw "The Direct3D 11 patch requires VLC 3.0.24." }
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $recipe = Join-Path $PSScriptRoot "vlc-d3d11"
 $archive = Join-Path $repositoryRoot ".deps\downloads\vlc-$VlcVersion.tar.xz"
@@ -13,7 +13,7 @@ $output = Join-Path $repositoryRoot ".deps\vlc-d3d11-$VlcVersion"
 $runtime = Join-Path $repositoryRoot ".deps\vlc-$VlcVersion"
 $manifestPath = Join-Path $output "veylo-d3d11-build.json"
 $plugin = Join-Path $output "libdirect3d11_plugin.dll"
-$expectedSourceHash = "e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0"
+$expectedSourceHash = "e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf"
 
 function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -60,7 +60,7 @@ if (-not $cached) {
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ((Get-Sha256 $plugin) -ne $manifest.plugin_sha256) { throw "Patched plugin checksum mismatch." }
 $fileVersion = (Get-Item -LiteralPath $plugin).VersionInfo.FileVersion
-if (-not $fileVersion -or [version]$fileVersion -le [version]"3.0.23.0") {
+if (-not $fileVersion -or [version]$fileVersion -le [version]"3.0.24.0") {
     throw "The patched plugin must have a Windows file version newer than stock VLC for MSI upgrades."
 }
 function Copy-IfChanged([string]$Source, [string]$Destination) {

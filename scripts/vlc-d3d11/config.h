@@ -10,8 +10,8 @@
 #define HAVE_ATTRIBUTE_PACKED 1
 #define HAVE_STDATOMIC_H 1
 #define PACKAGE_NAME "VLC"
-#define PACKAGE_VERSION "3.0.23"
-#define PACKAGE_STRING "VLC 3.0.23"
+#define PACKAGE_VERSION "3.0.24"
+#define PACKAGE_STRING "VLC 3.0.24"
 #define MODULE_STRING "direct3d11"
 #define MODULE_NAME direct3d11
 #define MODULE_NAME_IS_direct3d11 1

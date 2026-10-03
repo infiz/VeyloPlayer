@@ -31,5 +31,9 @@ QImage CurrentImageProvider::requestImage(const QString &id,
             reader.setScaledSize(scaledSize);
         }
     }
-    return reader.read();
+    const QImage image = reader.read();
+    if (size && !originalSize.isValid()) {
+        *size = image.size();
+    }
+    return image;
 }

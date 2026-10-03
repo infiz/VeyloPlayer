@@ -14,7 +14,7 @@ $progId = "VeyloPlayer.Media"
 $extensions = @(
     ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg",
     ".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi",
-    ".jpg", ".jpeg"
+    ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tif", ".tiff", ".svg", ".ico"
 )
 
 if ($Unregister) {

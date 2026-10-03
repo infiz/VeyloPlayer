@@ -1,4 +1,4 @@
-"""Build the patched VLC 3.0.23 Windows output plugin with MinGW-w64.
+"""Build the patched VLC 3.0.24 Windows output plugin with MinGW-w64.
 
 Run under Ubuntu 24.04 / WSL with g++-mingw-w64-x86-64-posix installed.
 Only the output plugin is rebuilt; the verified VLC core and codecs are retained.
@@ -13,8 +13,8 @@ import subprocess
 import tarfile
 
 
-VERSION = "3.0.23"
-SOURCE_SHA256 = "e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0"
+VERSION = "3.0.24"
+SOURCE_SHA256 = "e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf"
 RECIPE = Path(__file__).resolve().parent
 SOURCES = [
     "video_output/win32/" + name

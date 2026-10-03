@@ -66,13 +66,18 @@ fi
 trap cleanup EXIT
 
 qt_root="${QT_ROOT:-}"
+if [[ -z "${qt_root}" && -d "${repository_root}/.deps/Qt/6.12.0/macos" ]]; then
+    qt_root="${repository_root}/.deps/Qt/6.12.0/macos"
+fi
 if [[ -z "${qt_root}" ]] && command -v brew >/dev/null 2>&1; then
     qt_root="$(brew --prefix qt 2>/dev/null || true)"
 fi
 if [[ -z "${qt_root}" ]] && command -v qtpaths6 >/dev/null 2>&1; then
     qt_root="$(qtpaths6 --query QT_INSTALL_PREFIX 2>/dev/null || true)"
 fi
-[[ -n "${qt_root}" ]] || fail "Qt 6.8 or newer was not found. Set QT_ROOT or run 'brew install qt'."
+[[ -n "${qt_root}" ]] || fail "Qt 6.12.0 was not found. Run scripts/bootstrap-macos.sh."
+qt_version="$("${qt_root}/bin/qmake" -query QT_VERSION)"
+[[ "${qt_version}" == 6.12.0 ]] || fail "Qt 6.12.0 is required; found ${qt_version}. Run scripts/bootstrap-macos.sh or set QT_ROOT."
 
 macdeployqt="${qt_root}/bin/macdeployqt"
 qt_qml_root="${qt_root}/qml"
@@ -88,10 +93,16 @@ fi
 [[ -f "${qt_plugins_root}/platforms/libqcocoa.dylib" ]] || fail "The Qt Cocoa platform plug-in was not found."
 
 libvlc_root="${LIBVLC_ROOT:-}"
+vlc_arch=intel64
+[[ "$(uname -m)" != arm64 ]] || vlc_arch=arm64
+managed_vlc="${repository_root}/.deps/vlc-3.0.24-${vlc_arch}/VLC.app/Contents/MacOS"
+if [[ -z "${libvlc_root}" && -d "${managed_vlc}" ]]; then
+    libvlc_root="${managed_vlc}"
+fi
 if [[ -z "${libvlc_root}" && -d /Applications/VLC.app/Contents/MacOS ]]; then
     libvlc_root=/Applications/VLC.app/Contents/MacOS
 fi
-[[ -n "${libvlc_root}" ]] || fail "VLC was not found. Set LIBVLC_ROOT or run 'brew install --cask vlc'."
+[[ -n "${libvlc_root}" ]] || fail "VLC was not found. Run scripts/bootstrap-macos.sh or set LIBVLC_ROOT."
 [[ -f "${libvlc_root}/include/vlc/vlc.h" ]] || fail "LibVLC headers were not found below LIBVLC_ROOT ('${libvlc_root}')."
 [[ -f "${libvlc_root}/lib/libvlc.dylib" ]] || fail "libvlc.dylib was not found below LIBVLC_ROOT ('${libvlc_root}')."
 [[ -f "${libvlc_root}/lib/libvlccore.dylib" ]] || fail "libvlccore.dylib was not found below LIBVLC_ROOT ('${libvlc_root}')."
@@ -102,6 +113,8 @@ if [[ -f "${libvlc_root}/../Info.plist" ]]; then
     vlc_version="$(plutil -extract CFBundleShortVersionString raw \
         "${libvlc_root}/../Info.plist" 2>/dev/null || printf 'unknown')"
 fi
+
+[[ "${vlc_version}" == 3.0.24 ]] || fail "VLC 3.0.24 is required; found ${vlc_version}. Run scripts/bootstrap-macos.sh or set LIBVLC_ROOT."
 
 host_architecture="$(uname -m)"
 if ! lipo -archs "${libvlc_root}/lib/libvlc.dylib" | tr ' ' '\n' | grep -Fxq "${host_architecture}"; then
@@ -123,6 +136,7 @@ cp -RLp "${libvlc_root}/lib" "${vlc_sdk_root}/lib"
 cmake -E remove_directory "${build_directory}/VeyloPlayer.app"
 
 cmake -S "${repository_root}" -B "${build_directory}" -G Ninja \
+    -U "Qt6*_DIR" -U QT_DIR -U MACDEPLOYQT_EXECUTABLE \
     -DCMAKE_BUILD_TYPE="${configuration}" \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 \
     -DCMAKE_PREFIX_PATH="${qt_root}" \
@@ -189,6 +203,11 @@ mkdir -p "${application}/Contents/PlugIns/platforms" \
 cp -Lp "${qt_plugins_root}/platforms/libqcocoa.dylib" \
     "${application}/Contents/PlugIns/platforms/"
 cp -Lp "${qt_plugins_root}/imageformats/libqjpeg.dylib" \
+    "${qt_plugins_root}/imageformats/libqwebp.dylib" \
+    "${qt_plugins_root}/imageformats/libqgif.dylib" \
+    "${qt_plugins_root}/imageformats/libqtiff.dylib" \
+    "${qt_plugins_root}/imageformats/libqsvg.dylib" \
+    "${qt_plugins_root}/imageformats/libqico.dylib" \
     "${application}/Contents/PlugIns/imageformats/"
 
 deployment_arguments=()
@@ -235,7 +254,7 @@ if [[ -d "${qt_sbom_root}" ]]; then
     mkdir -p "${license_destination}/qt-sbom"
     find "${qt_sbom_root}" -maxdepth 1 -type f \
         \( -name 'qtbase-*.spdx' -o -name 'qtdeclarative-*.spdx' \
-           -o -name 'qtsvg-*.spdx' -o -name 'qtshadertools-*.spdx' \) \
+           -o -name 'qtimageformats-*.spdx' -o -name 'qtsvg-*.spdx' -o -name 'qtshadertools-*.spdx' \) \
         -exec cp -Lp {} "${license_destination}/qt-sbom/" \;
 fi
 
