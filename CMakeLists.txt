@@ -8,7 +8,7 @@ endif()
 
 project(VeyloPlayer
     # Release version: update this value manually for each release.
-    VERSION 1.0.2
+    VERSION 1.0.3
     DESCRIPTION "A modern open-source media player for Windows and macOS"
     LANGUAGES CXX
 )
@@ -127,7 +127,9 @@ target_compile_definitions(VeyloPlayer PRIVATE
 )
 
 if(MSVC)
-    target_compile_options(VeyloPlayer PRIVATE /W4 /permissive- /utf-8)
+    # MSVC emits C4702 from optimized Qt 6.12 inline/template code even with
+    # external headers at warning level zero. Disable only this diagnostic.
+    target_compile_options(VeyloPlayer PRIVATE /W4 /permissive- /utf-8 /wd4702)
 else()
     target_compile_options(VeyloPlayer PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -208,7 +210,11 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/LICENSES/"
 # third-party license inventory for each module. Include the modules that can
 # contribute runtime files to VeyloPlayer when those SBOMs are available.
 get_filename_component(VEYLO_QT_PREFIX "${Qt6_DIR}/../../.." ABSOLUTE)
-foreach(qt_module qtbase qtdeclarative qtsvg qtshadertools)
+if(WIN32 AND NOT EXISTS "${VEYLO_QT_PREFIX}/plugins/imageformats/qwebp.dll")
+    message(FATAL_ERROR "Qt's WebP image plugin is required. Run scripts/bootstrap-windows.ps1 to install qtimageformats.")
+endif()
+
+foreach(qt_module qtbase qtdeclarative qtsvg qtshadertools qtimageformats)
     set(qt_sbom "${VEYLO_QT_PREFIX}/sbom/${qt_module}-${Qt6_VERSION}.spdx")
     if(EXISTS "${qt_sbom}")
         install(FILES "${qt_sbom}" DESTINATION licenses/qt-sbom)

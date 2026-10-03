@@ -16,12 +16,12 @@ Quick Layouts, Quick Shapes, SVG, platform and image-format plugins, and their
 runtime dependencies.
 
 - Copyright: The Qt Company Ltd. and other Qt contributors.
-- Windows release baseline: Qt 6.11.2.
+- Windows release baseline: Qt 6.12.0.
 - License used by VeyloPlayer distributions: LGPL-3.0-only, or GPL-3.0-only
   where a shipped Qt component is not offered under LGPL-3.0-only.
 - License texts: `LICENSE` and `LICENSES/LGPL-3.0.txt`.
 - Licensing information: <https://doc.qt.io/qt-6/licensing.html>
-- Exact Qt 6.11.2 sources: <https://download.qt.io/official_releases/qt/6.11/6.11.2/submodules/>
+- Exact Qt 6.12.0 sources: <https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/>
 - Qt source repositories: <https://code.qt.io/cgit/qt/>
 
 Qt contains third-party code under additional permissive and open-source
@@ -43,7 +43,7 @@ license selection depend on the VLC binary archive used for a release.
 
 - Copyright: VideoLAN and VLC contributors; individual bundled libraries are
   copyright their respective authors.
-- Windows release baseline: official VLC 3.0.23 64-bit archive.
+- Windows release baseline: official VLC 3.0.24 64-bit archive.
 - The Direct3D 11 output plugin is rebuilt from that version with VeyloPlayer's
   planar 10-bit 4:2:2 patch. Its original LGPL notices remain in the source.
   The patch and build recipe are in `scripts/vlc-d3d11/` and are included in
@@ -58,9 +58,9 @@ license selection depend on the VLC binary archive used for a release.
   the exact files establishes a different license.
 - License texts: `LICENSES/GPL-2.0.txt` and `LICENSES/LGPL-2.1.txt`.
 - VLC source and required-library archives: <https://www.videolan.org/vlc/download-sources.html>
-- Exact VLC 3.0.23 source: <https://download.videolan.org/videolan/vlc/3.0.23/vlc-3.0.23.tar.xz>
+- Exact VLC 3.0.24 source: <https://download.videolan.org/videolan/vlc/3.0.24/vlc-3.0.24.tar.xz>
 - Source checksum (SHA-256):
-  `e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0`
+  `e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf`
 
 Windows packages also include VLC's original `COPYING.txt`, `AUTHORS.txt`, and
 `README.txt` when available from the pinned archive. Binary releases must make
@@ -77,7 +77,8 @@ and VideoLAN branding are not used by VeyloPlayer.
 
 ## Build-only and system components
 
-CMake, Ninja, WiX Toolset, aqtinstall, Python, Visual Studio build tools, Apple
+CMake, Ninja, WiX Toolset, aqtinstall, the standalone 7-Zip extractor, Python,
+Visual Studio build tools, Apple
 developer tools, and code-signing/notarization tools are used to build or
 package VeyloPlayer but are not intentionally redistributed as part of the
 application. Their licenses still govern use of those tools by developers.

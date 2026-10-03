@@ -91,6 +91,14 @@
             <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".avi" Type="string" Value="VeyloPlayer.Media"/>
             <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".jpg" Type="string" Value="VeyloPlayer.Media"/>
             <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".jpeg" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".webp" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".png" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".gif" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".bmp" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".tif" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".tiff" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".svg" Type="string" Value="VeyloPlayer.Media"/>
+            <RegistryValue Root="HKLM" Key="Software\VeyloPlayer\Capabilities\FileAssociations" Name=".ico" Type="string" Value="VeyloPlayer.Media"/>
 
             <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".mp3" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".m4a" Type="string" Value=""/>
@@ -106,6 +114,14 @@
             <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".avi" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".jpg" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".jpeg" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".webp" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".png" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".gif" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".bmp" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".tif" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".tiff" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".svg" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\Applications\VeyloPlayer.exe\SupportedTypes" Name=".ico" Type="string" Value=""/>
 
             <RegistryValue Root="HKLM" Key="Software\Classes\.mp3\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\.m4a\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
@@ -121,6 +137,14 @@
             <RegistryValue Root="HKLM" Key="Software\Classes\.avi\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\.jpg\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
             <RegistryValue Root="HKLM" Key="Software\Classes\.jpeg\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.webp\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.png\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.gif\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.bmp\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.tif\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.tiff\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.svg\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
+            <RegistryValue Root="HKLM" Key="Software\Classes\.ico\OpenWithProgids" Name="VeyloPlayer.Media" Type="string" Value=""/>
         </Component>
 
         <ui:WixUI Id="$(var.CPACK_WIX_UI_REF)"/>

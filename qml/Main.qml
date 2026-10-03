@@ -333,13 +333,12 @@ ApplicationWindow {
         target: Player
         function onPlayingChanged() { root.showControls() }
         function onCurrentMediaChanged() {
-            if (Player.isImage) {
-                root.imagePanX = 0
-                root.imagePanY = 0
+            // Keep the chosen photo zoom until the user explicitly resets it.
+            // A newly opened photo starts centered, including after other media.
+            root.imagePanX = 0
+            root.imagePanY = 0
+            if (Player.isImage)
                 Qt.callLater(root.clampImagePan)
-            } else {
-                root.resetImageTransform()
-            }
             root.showControls()
         }
         function onFullscreenToggleRequested() { root.toggleFullScreen() }
@@ -357,10 +356,10 @@ ApplicationWindow {
         title: "Add media files"
         fileMode: FileDialog.OpenFiles
         nameFilters: [
-            "All supported media (*.mp3 *.m4a *.aac *.wav *.flac *.ogg *.mp4 *.m4v *.mov *.mkv *.webm *.avi *.jpg *.jpeg)",
+            "All supported media (*.mp3 *.m4a *.aac *.wav *.flac *.ogg *.mp4 *.m4v *.mov *.mkv *.webm *.avi *.jpg *.jpeg *.webp *.png *.gif *.bmp *.tif *.tiff *.svg *.ico)",
             "Video files (*.mp4 *.m4v *.mov *.mkv *.webm *.avi)",
             "Audio files (*.mp3 *.m4a *.aac *.wav *.flac *.ogg)",
-            "JPEG images (*.jpg *.jpeg)"
+            "Images (*.jpg *.jpeg *.webp *.png *.gif *.bmp *.tif *.tiff *.svg *.ico)"
         ]
         onAccepted: Player.openUrls(selectedFiles)
     }
@@ -441,7 +440,7 @@ ApplicationWindow {
                     clip: true
                     AboutTextArea {
                         textFormat: TextEdit.RichText
-                        text: "<p><b>VeyloPlayer</b> is a modern open-source player for local video, audio, and JPEG files.</p>"
+                        text: "<p><b>VeyloPlayer</b> is a modern open-source player for local video, audio, and images.</p>"
                             + "<p>This program comes with absolutely no warranty. You may redistribute and modify it under GPL-3.0-or-later.</p>"
                             + "<p>Qt, VLC/LibVLC, FFmpeg, and other bundled software remain under their own licenses. Open-source licenses do not necessarily grant codec patent, trademark, decryption, or media-content rights.</p>"
                             + "<p><a style=\"color:" + Theme.accent + "\" href=\"https://github.com/infiz/VeyloPlayer\">View source code and release information</a></p>"
@@ -843,7 +842,7 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Player.resumeAvailable
                         ? "Pick up where you stopped last time."
-                        : "Open a video, song, or JPEG — or drop a file or folder here."
+                        : "Open a video, song, or photo — or drop a file or folder here."
                     color: "#a9b0ba"
                     font.pixelSize: 14
                 }
